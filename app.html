@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=5">
 </head>
 <body>
 <header class="topbar">
@@ -27,8 +27,8 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<script src="common.js"></script>
+<script src="config.js?v=5"></script>
+<script src="common.js?v=5"></script>
 <script>
 (function () {
   const K = window.Compas;
@@ -125,7 +125,7 @@
                 <span class="eyebrow" style="color:#FFB26B">${esc(t("st.next"))}</span>
                 <div class="when">${esc(fmtLongDateTime(next.starts_at))}</div>
                 <div class="muted">${esc(next.title || instName(next.instrument))} · ${next.duration_min} min · ${esc(t("l." + next.format))}${next.teacher ? " · " + esc(next.teacher.full_name) : ""}</div>
-                <div>${next.room_url ? `<a class="btn btn-orange" href="${esc(next.room_url)}">${esc(t("st.join"))}</a>` : `<button class="btn btn-orange" disabled>${esc(t("st.join"))}</button> <span class="small muted" style="margin-left:8px">${esc(t("st.aulaSoon"))}</span>`}</div>
+                <div><a class="btn btn-orange" href="aula.html?lesson=${next.id}">${esc(t("st.join"))}</a> <span class="small muted" style="margin-left:8px">${esc(t("au.opensNote"))}</span></div>
               </section>` : `<div class="card"><h2 style="margin-bottom:6px">${esc(t("st.next"))}</h2><p class="muted">${esc(t("st.noNext"))}</p></div>`}
 
             <section class="stack">
@@ -346,7 +346,7 @@
         <div class="item-head"><div><h3>${esc(fmtDateTime(l.starts_at))}</h3><div class="small muted">${esc(l.title || instName(l.instrument))} · ${l.duration_min} min</div></div>
           <span class="pill ${l.status === "cancelled" ? "bad" : l.status === "done" ? "good" : l.format === "group" ? "orange" : ""}">${esc(l.status === "cancelled" ? t("l.cancelled") : l.status === "done" ? t("l.done") : t("l." + l.format))}</span></div>
         <div class="item-meta">${(l.lesson_students || []).map((x) => `<span>${esc(x.student ? x.student.full_name : "?")}</span>`).join("")}</div>
-        ${l.status === "scheduled" ? `<div class="item-actions"><button class="btn btn-ghost btn-sm" data-action="lesson-done">${esc(t("l.done"))}</button><button class="btn btn-danger btn-sm" data-action="lesson-cancel">${esc(t("l.cancel"))}</button></div>` : ""}
+        ${l.status === "scheduled" ? `<div class="item-actions"><a class="btn btn-sm" href="aula.html?lesson=${l.id}">${esc(t("au.openAula"))}</a><button class="btn btn-ghost btn-sm" data-action="lesson-done">${esc(t("l.done"))}</button><button class="btn btn-danger btn-sm" data-action="lesson-cancel">${esc(t("l.cancel"))}</button></div>` : ""}
       </article>`;
     const d = new Date(Date.now() + 86400000); d.setMinutes(0, 0, 0); d.setHours(17);
     const pad = (n) => String(n).padStart(2, "0");

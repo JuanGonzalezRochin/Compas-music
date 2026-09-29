@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aula · Compás</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="app.css?v=5">
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; }
+  .aula { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 440px; min-height: 0; }
+  .video { position: relative; background: #0B1424; min-width: 0; min-height: 0; display: grid; }
+  #call { width: 100%; height: 100%; }
+  #call iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .prejoin { align-self: center; justify-self: center; width: min(460px, calc(100% - 32px)); background: var(--surface); color: var(--ink); border-radius: 18px; padding: 26px; display: grid; gap: 16px; box-shadow: var(--shadow); margin-block: 24px; }
+  .prejoin ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .prejoin li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; color: var(--ink-soft); }
+  .prejoin li b { color: var(--accent); }
+  .panel { border-left: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .panel .tabs { margin: 0; padding-inline: 10px; flex: none; }
+  .pane { flex: 1; min-height: 0; overflow: auto; }
+  .pane.pad { padding: 18px; display: grid; gap: 16px; align-content: start; }
+  #pScore { display: flex; flex-direction: column; }
+  #pScore .picker { padding: 10px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; }
+  #scoreFrame { flex: 1; width: 100%; border: 0; min-height: 360px; background: var(--surface-2); }
+  .bpm { display: flex; align-items: baseline; gap: 10px; font-variant-numeric: tabular-nums; }
+  .bpm .val { font: 800 3.4rem/1 var(--f-display); letter-spacing: -0.04em; }
+  .beats { display: grid; gap: 8px; }
+  .beat { height: 14px; border-radius: 999px; background: var(--surface-2); transition: background .06s; }
+  .beat.on { background: var(--orange); }
+  .beat.on.accent { background: var(--accent); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .stepper { display: flex; gap: 8px; align-items: center; }
+  .round { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); font: 700 1.2rem var(--f-display); cursor: pointer; flex: none; }
+  .note-big { font: 800 4.2rem/1 var(--f-display); letter-spacing: -0.03em; text-align: center; min-height: 1em; }
+  .gauge { position: relative; height: 70px; }
+  .gauge .scale { position: absolute; left: 0; right: 0; top: 34px; height: 2px; background: var(--line); }
+  .gauge .tick { position: absolute; top: 24px; width: 2px; height: 22px; background: var(--line); transform: translateX(-1px); }
+  .gauge .tick.mid { background: var(--good); height: 30px; top: 20px; }
+  .gauge .needle { position: absolute; top: 10px; width: 4px; height: 50px; border-radius: 2px; background: var(--ink-soft); transform: translateX(-2px); left: 50%; transition: left .12s ease-out, background .12s; }
+  .gauge .needle.good { background: var(--good); }
+  .gauge .lbl { position: absolute; top: 52px; font: 500 .7rem var(--f-mono); color: var(--ink-soft); transform: translateX(-50%); }
+  .strings { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .string { text-align: center; padding: 8px 0; border-radius: 10px; border: 1.5px solid var(--line); font: 700 .95rem var(--f-mono); }
+  .string.active { border-color: var(--accent); background: var(--accent-soft); }
+  .string.good { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+  .errbox { align-self: center; justify-self: center; max-width: 460px; margin: 24px 16px; background: var(--surface); color: var(--ink); padding: 22px; border-radius: 16px; display: grid; gap: 12px; }
+  @media (max-width: 980px) {
+    body { height: auto; }
+    .aula { grid-template-columns: 1fr; }
+    .video { min-height: 70vh; }
+    .panel { border-left: 0; border-top: 1px solid var(--line); min-height: 80vh; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap" style="max-width:none">
+    <a class="logo" href="app.html"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 18V6l10-2v12" stroke="#FFB26B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="#FFB26B"/><circle cx="16.5" cy="16" r="2.6" fill="#FFB26B"/></svg></span></a>
+    <div style="min-width:0"><b id="lTitle" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">…</b><span class="small muted" id="lWhen"></span></div>
+    <div class="right">
+      <div class="seg" role="group" aria-label="Idioma / Language"><button type="button" data-lang="es">ES</button><button type="button" data-lang="en">EN</button></div>
+      <a class="btn btn-ghost btn-sm" href="app.html" data-i18n="au.back">Volver al panel</a>
+    </div>
+  </div>
+</header>
+
+<main class="aula">
+  <section class="video" aria-label="Video">
+    <div class="prejoin" id="prejoin">
+      <span class="eyebrow" data-i18n="au.tipHead">Antes de empezar</span>
+      <ul>
+        <li><b><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg></b><span data-i18n="au.tip1"></span></li>
+        <li><b>♪</b><span data-i18n="au.tip2"></span></li>
+        <li><b>⇄</b><span data-i18n="au.tip3"></span></li>
+      </ul>
+      <button class="btn btn-orange" id="joinBtn" data-i18n="au.join">Entrar a la videollamada</button>
+      <span class="err" id="joinErr" hidden></span>
+    </div>
+    <div id="call" hidden></div>
+  </section>
+
+  <aside class="panel">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-pane="pScore" aria-selected="true" data-i18n="au.tabScore">Partitura</button>
+      <button role="tab" data-pane="pMetro" aria-selected="false" data-i18n="au.tabMetro">Metrónomo</button>
+      <button role="tab" data-pane="pTuner" aria-selected="false" data-i18n="au.tabTuner">Afinador</button>
+    </div>
+
+    <div class="pane" id="pScore">
+      <div class="picker" id="picker" hidden>
+        <div class="field" style="flex:1"><select id="scoreSel" aria-label="score"></select></div>
+      </div>
+      <iframe id="scoreFrame" title="Partitura" allow="clipboard-write"></iframe>
+    </div>
+
+    <div class="pane pad" id="pMetro" hidden>
+      <div class="section-title"><span class="eyebrow" data-i18n="au.tabMetro">Metrónomo</span><span class="mono" id="tempoName" style="color:var(--accent);font-style:italic">Andante</span></div>
+      <div class="bpm"><span class="val" id="bpmVal">80</span><span class="mono muted">♩ = BPM</span></div>
+      <div class="beats" id="beats"></div>
+      <input type="range" id="bpm" min="30" max="240" value="80" aria-label="BPM">
+      <div class="stepper">
+        <button class="round" id="bpmDown" aria-label="-1">−</button>
+        <button class="btn btn-block" id="metroToggle" data-i18n="metro.start">Iniciar</button>
+        <button class="round" id="bpmUp" aria-label="+1">+</button>
+      </div>
+      <div class="field"><label for="beatsSel" data-i18n="au.beats">Tiempos por compás</label>
+        <select id="beatsSel"><option>2</option><option>3</option><option selected>4</option><option>6</option></select></div>
+      <label class="check" id="shareWrap" hidden><input type="checkbox" id="shareMetro" checked> <span data-i18n="au.share">Compartir con la clase</span></label>
+      <div class="pill" id="sharedPill" hidden style="justify-self:start"></div>
+      <label class="check"><input type="checkbox" id="muteMetro"> <span data-i18n="au.localMute">Silenciar en mi dispositivo</span></label>
+    </div>
+
+    <div class="pane pad" id="pTuner" hidden>
+      <div class="seg" role="group" style="justify-self:start">
+        <button type="button" data-tmode="guitar" aria-pressed="true" data-i18n="au.guitar">Guitarra</button>
+        <button type="button" data-tmode="chromatic" aria-pressed="false" data-i18n="au.chromatic">Cromático</button>
+      </div>
+      <div class="note-big" id="tNote">—</div>
+      <div class="gauge" aria-hidden="true">
+        <div class="scale"></div>
+        <div class="tick" style="left:0%"></div><div class="tick" style="left:25%"></div><div class="tick mid" style="left:50%"></div><div class="tick" style="left:75%"></div><div class="tick" style="left:100%"></div>
+        <span class="lbl" style="left:0%">−50</span><span class="lbl" style="left:50%">0</span><span class="lbl" style="left:100%">+50</span>
+        <div class="needle" id="needle"></div>
+      </div>
+      <div style="text-align:center" class="mono" id="tInfo" aria-live="polite">&nbsp;</div>
+      <div class="strings" id="strings"></div>
+      <button class="btn" id="tunerBtn" data-i18n="au.tunerStart">Activar afinador</button>
+      <p class="small muted" data-i18n="au.tunerHint">Toca una cuerda o una nota y mantenla.</p>
+    </div>
+  </aside>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@daily-co/daily-js@0.92.2/dist/daily.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js?v=5"></script>
+<script src="common.js?v=5"></script>
+<script>
+(function () {
+  const K = window.Compas;
+  const { sb, t, esc, instName, fmtLongDateTime, toast, fail } = K;
+  const $ = (id) => document.getElementById(id);
+  const lessonId = new URLSearchParams(location.search).get("lesson");
+  let me = null, lesson = null, isTeacher = false, code = "", callFrame = null, aulaCh = null;
+
+  K.applyStatic();
+  K.bindLang(() => { renderHeader(); renderStrings(); updateMetroUi(); });
+
+  /* ---------- Tabs ---------- */
+  document.querySelectorAll("[data-pane]").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll("[data-pane]").forEach((x) => { x.setAttribute("aria-selected", String(x === b)); $(x.dataset.pane).hidden = x !== b; });
+  }));
+
+  /* ---------- Boot ---------- */
+  async function boot() {
+    const { data } = await sb.auth.getSession();
+    if (!data.session) return location.replace("entrar.html?next=" + encodeURIComponent("aula.html" + location.search));
+    if (!lessonId) return showError(t("au.err.noLesson"));
+    const uid = data.session.user.id;
+    me = (await sb.from("profiles").select("*").eq("id", uid).maybeSingle()).data;
+    const res = await sb.from("lessons").select("*").eq("id", lessonId).maybeSingle();
+    lesson = res.data;
+    if (!me || !lesson) return showError(t("au.err.no_access"));
+    isTeacher = lesson.teacher_id === me.id || me.role === "admin";
+    code = "L" + lesson.id.replace(/-/g, "").slice(0, 7).toUpperCase();
+    renderHeader();
+    setupScore();
+    setupMetroChannel();
+  }
+  function renderHeader() {
+    if (!lesson) return;
+    $("lTitle").textContent = lesson.title || instName(lesson.instrument);
+    $("lWhen").textContent = fmtLongDateTime(lesson.starts_at) + " · " + lesson.duration_min + " min";
+  }
+  function showError(msg) {
+    $("prejoin").hidden = true; $("call").hidden = true;
+    const box = document.createElement("div"); box.className = "errbox";
+    box.innerHTML = `<p>${esc(msg)}</p><a class="btn btn-ghost btn-sm" href="app.html" style="justify-self:start">${esc(t("au.back"))}</a>`;
+    document.querySelector(".video").append(box);
+  }
+
+  /* ---------- Video (Daily Prebuilt, music audio mode) ---------- */
+  async function readFnError(error) {
+    try { const body = await error.context.json(); return body; } catch (e) { return { error: "server" }; }
+  }
+  $("joinBtn").addEventListener("click", async () => {
+    const btn = $("joinBtn"); btn.disabled = true; btn.textContent = t("au.joining"); $("joinErr").hidden = true;
+    try {
+      const { data, error } = await sb.functions.invoke("daily-room", { body: { lesson_id: lessonId } });
+      if (error) {
+        const body = await readFnError(error);
+        const key = "au.err." + (body.error || "server");
+        let msg = t(key) === key ? t("au.err.server") : t(key);
+        if (body.opens_at) msg = msg.replace("{t}", new Date(body.opens_at).toLocaleTimeString(K.loc(), { hour: "numeric", minute: "2-digit" }));
+        throw new Error(msg);
+      }
+      $("prejoin").hidden = true; $("call").hidden = false;
+      callFrame = Daily.createFrame($("call"), {
+        showLeaveButton: true, showFullscreenButton: true, lang: K.lang,
+        iframeStyle: { width: "100%", height: "100%", border: "0" },
+        dailyConfig: { micAudioMode: "music" },   // 256 kbps stereo, no voice filters
+        theme: { colors: { accent: "#1F5FD1", accentText: "#FFFFFF", background: "#0F1F3A", backgroundAccent: "#19283F",
+          baseText: "#EAF1FB", border: "#243653", mainAreaBg: "#0B1424", mainAreaBgAccent: "#19283F", mainAreaText: "#FFFFFF", supportiveText: "#9FB2CC" } },
+      });
+      callFrame.on("left-meeting", () => { callFrame.destroy(); callFrame = null; $("call").hidden = true; $("prejoin").hidden = false; btn.disabled = false; btn.textContent = t("au.join"); });
+      callFrame.on("error", (e) => fail(new Error(e && e.errorMsg)));
+      await callFrame.join({ url: data.url, token: data.token, userName: me.full_name || "" });
+    } catch (e) {
+      $("joinErr").textContent = e.message || t("au.err.server"); $("joinErr").hidden = false;
+      btn.disabled = false; btn.textContent = t("au.join");
+      $("prejoin").hidden = false; $("call").hidden = true;
+    }
+  });
+
+  /* ---------- Shared score ---------- */
+  async function setupScore() {
+    const frame = $("scoreFrame");
+    if (!isTeacher) { frame.src = `partitura.html?embed=1&sala=${code}`; return; }
+    const { data: scores } = await sb.from("scores").select("id,title,composer,kind").eq("kind", "pdf").order("created_at", { ascending: false });
+    const sel = $("scoreSel"); $("picker").hidden = false;
+    sel.innerHTML = `<option value="">${esc(t("au.pickScore"))}</option>` + (scores || []).map((s) => `<option value="${s.id}">${esc(s.title)}${s.composer ? " — " + esc(s.composer) : ""}</option>`).join("");
+    if (!scores || !scores.length) frame.srcdoc = `<p style="font-family:system-ui;color:#52627C;padding:20px">${esc(t("au.noScores"))}</p>`;
+    sel.addEventListener("change", () => {
+      if (!sel.value) return;
+      frame.removeAttribute("srcdoc");
+      frame.src = `partitura.html?embed=1&score=${sel.value}&sala=${code}`;
+    });
+  }
+
+  /* ---------- Metronome (plays on each device; teacher can share tempo) ---------- */
+  const metro = { on: false, bpm: 80, beats: 4, beat: 0, next: 0, timer: null, sharedByTeacher: false };
+  let actx = null;
+  const audio = () => { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); return actx; };
+  const tempoName = (b) => (b < 60 ? "Largo" : b < 76 ? "Adagio" : b < 108 ? "Andante" : b < 120 ? "Moderato" : b < 168 ? "Allegro" : "Presto");
+  function renderBeats() { $("beats").style.gridTemplateColumns = `repeat(${metro.beats}, 1fr)`; $("beats").innerHTML = Array.from({ length: metro.beats }, () => `<div class="beat"></div>`).join(""); }
+  function updateMetroUi() {
+    $("bpm").value = metro.bpm; $("bpmVal").textContent = metro.bpm; $("tempoName").textContent = tempoName(metro.bpm);
+    $("beatsSel").value = String(metro.beats);
+    $("metroToggle").textContent = t(metro.on ? "metro.stop" : "metro.start");
+    $("shareWrap").hidden = !isTeacher;
+    const sp = $("sharedPill"); sp.hidden = isTeacher || !metro.sharedByTeacher; sp.textContent = t("au.shared");
+  }
+  function click(time, accent) {
+    if ($("muteMetro").checked) return;
+    const a = actx, o = a.createOscillator(), g = a.createGain();
+    o.frequency.value = accent ? 1600 : 1000;
+    g.gain.setValueAtTime(0.0001, time); g.gain.exponentialRampToValueAtTime(0.5, time + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+    o.connect(g).connect(a.destination); o.start(time); o.stop(time + 0.06);
+  }
+  function scheduler() {
+    while (metro.next < actx.currentTime + 0.1) {
+      const b = metro.beat % metro.beats, at = metro.next;
+      click(at, b === 0);
+      setTimeout(() => document.querySelectorAll(".beat").forEach((el, i) => { el.classList.toggle("on", i === b); el.classList.toggle("accent", i === 0); }), Math.max(0, (at - actx.currentTime) * 1000));
+      metro.next += 60 / metro.bpm; metro.beat++;
+    }
+  }
+  function setRunning(on) {
+    if (on === metro.on) return;
+    metro.on = on;
+    if (on) { const a = audio(); metro.beat = 0; metro.next = a.currentTime + 0.06; metro.timer = setInterval(scheduler, 25); }
+    else { clearInterval(metro.timer); document.querySelectorAll(".beat").forEach((el) => el.classList.remove("on")); }
+    updateMetroUi();
+  }
+  function shareMetro() {
+    if (isTeacher && aulaCh && $("shareMetro").checked) aulaCh.send({ type: "broadcast", event: "metro", payload: { bpm: metro.bpm, beats: metro.beats, on: metro.on } });
+  }
+  const setBpm = (v) => { metro.bpm = Math.max(30, Math.min(240, Math.round(v))); updateMetroUi(); shareMetro(); };
+  $("bpm").addEventListener("input", (e) => setBpm(+e.target.value));
+  $("bpmDown").addEventListener("click", () => setBpm(metro.bpm - 1));
+  $("bpmUp").addEventListener("click", () => setBpm(metro.bpm + 1));
+  $("beatsSel").addEventListener("change", (e) => { metro.beats = +e.target.value; renderBeats(); updateMetroUi(); shareMetro(); });
+  $("metroToggle").addEventListener("click", () => { audio(); setRunning(!metro.on); shareMetro(); });
+  $("shareMetro").addEventListener("change", shareMetro);
+  renderBeats(); updateMetroUi();
+
+  function setupMetroChannel() {
+    aulaCh = sb.channel("compas-aula-" + code, { config: { broadcast: { self: false } } });
+    aulaCh.on("broadcast", { event: "metro" }, ({ payload }) => {
+      if (isTeacher) return;
+      metro.sharedByTeacher = true;
+      metro.bpm = payload.bpm;
+      if (payload.beats !== metro.beats) { metro.beats = payload.beats; renderBeats(); }
+      if (payload.on && actx) setRunning(true); else if (!payload.on) setRunning(false);
+      if (payload.on && !actx) toast(t("au.shared") + " · " + payload.bpm + " BPM");
+      updateMetroUi();
+    });
+    aulaCh.on("broadcast", { event: "metro-hello" }, () => shareMetro());
+    aulaCh.subscribe((status) => { if (status === "SUBSCRIBED" && !isTeacher) aulaCh.send({ type: "broadcast", event: "metro-hello", payload: {} }); });
+  }
+
+  /* ---------- Tuner (runs only on this device) ---------- */
+  const NAMES_ES = ["Do","Do♯","Re","Re♯","Mi","Fa","Fa♯","Sol","Sol♯","La","La♯","Si"];
+  const NAMES_EN = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+  const GUITAR = [40, 45, 50, 55, 59, 64]; // E2 A2 D3 G3 B3 E4 (MIDI)
+  let tMode = "guitar", tStream = null, tCtx = null, tAnalyser = null, tBuf = null, tTimer = null, history = [];
+  const noteName = (m) => (K.lang === "es" ? NAMES_ES : NAMES_EN)[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  const midiOf = (f) => 69 + 12 * Math.log2(f / 440);
+  const freqOf = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function renderStrings(active, good) {
+    $("strings").hidden = tMode !== "guitar";
+    $("strings").innerHTML = GUITAR.map((m) => `<div class="string ${m === active ? (good ? "good" : "active") : ""}">${noteName(m).replace(/\d+$/, "")}<sub style="font-size:.6em">${Math.floor(m / 12) - 1}</sub></div>`).join("");
+  }
+  document.querySelectorAll("[data-tmode]").forEach((b) => b.addEventListener("click", () => {
+    tMode = b.dataset.tmode;
+    document.querySelectorAll("[data-tmode]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    renderStrings();
+  }));
+  renderStrings();
+
+  function autoCorrelate(buf, sr) {
+    let size = buf.length, rms = 0;
+    for (let i = 0; i < size; i++) rms += buf[i] * buf[i];
+    if (Math.sqrt(rms / size) < 0.01) return -1;
+    let r1 = 0, r2 = size - 1; const thr = 0.2;
+    for (let i = 0; i < size / 2; i++) if (Math.abs(buf[i]) < thr) { r1 = i; break; }
+    for (let i = 1; i < size / 2; i++) if (Math.abs(buf[size - i]) < thr) { r2 = size - i; break; }
+    buf = buf.slice(r1, r2); size = buf.length;
+    const c = new Float32Array(size);
+    for (let lag = 0; lag < size; lag++) { let s = 0; for (let j = 0; j < size - lag; j++) s += buf[j] * buf[j + lag]; c[lag] = s; }
+    let d = 0; while (d < size - 1 && c[d] > c[d + 1]) d++;
+    let maxv = -1, maxp = -1;
+    for (let i = d; i < size; i++) if (c[i] > maxv) { maxv = c[i]; maxp = i; }
+    if (maxp <= 0) return -1;
+    let T0 = maxp; const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1] ?? x2;
+    const a = (x1 + x3 - 2 * x2) / 2, b = (x3 - x1) / 2; if (a) T0 -= b / (2 * a);
+    return sr / T0;
+  }
+  function tick() {
+    tAnalyser.getFloatTimeDomainData(tBuf);
+    const f = autoCorrelate(tBuf, tCtx.sampleRate);
+    if (f > 60 && f < 1400) { history.push(f); if (history.length > 5) history.shift(); }
+    else if (f === -1) { history = []; }
+    if (!history.length) { $("tInfo").textContent = t("au.listening"); return; }
+    const freq = history.slice().sort((a, b) => a - b)[Math.floor(history.length / 2)];
+    const m = midiOf(freq);
+    let target = Math.round(m);
+    if (tMode === "guitar") target = GUITAR.reduce((best, s) => (Math.abs(s - m) < Math.abs(best - m) ? s : best), GUITAR[0]);
+    const cents = Math.max(-50, Math.min(50, Math.round(1200 * Math.log2(freq / freqOf(target)))));
+    const good = Math.abs(cents) <= 5;
+    $("tNote").textContent = noteName(target);
+    $("needle").style.left = (50 + cents) + "%";
+    $("needle").classList.toggle("good", good);
+    $("tInfo").textContent = `${freq.toFixed(1)} Hz · ${cents > 0 ? "+" : ""}${cents}¢ · ${good ? t("au.inTune") : cents < 0 ? t("au.low") : t("au.high")}`;
+    if (tMode === "guitar") renderStrings(target, good);
+  }
+  async function tunerStart() {
+    tStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    tCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = tCtx.createMediaStreamSource(tStream);
+    tAnalyser = tCtx.createAnalyser(); tAnalyser.fftSize = 2048; src.connect(tAnalyser);
+    tBuf = new Float32Array(tAnalyser.fftSize);
+    tTimer = setInterval(tick, 90);
+    $("tunerBtn").textContent = t("au.tunerStop");
+  }
+  function tunerStop() {
+    clearInterval(tTimer); tTimer = null;
+    if (tStream) tStream.getTracks().forEach((tr) => tr.stop());
+    if (tCtx) tCtx.close(); tStream = tCtx = null; history = [];
+    $("tunerBtn").textContent = t("au.tunerStart"); $("tInfo").innerHTML = "&nbsp;"; $("tNote").textContent = "—";
+    $("needle").style.left = "50%"; renderStrings();
+  }
+  $("tunerBtn").addEventListener("click", () => (tTimer ? tunerStop() : tunerStart().catch(fail)));
+
+  boot().catch(fail);
+})();
+</script>
+</body>
+</html>

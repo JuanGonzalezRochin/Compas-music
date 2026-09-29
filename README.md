@@ -8,6 +8,8 @@ Static site for GitHub Pages + Supabase (accounts, homework) + Web3Forms (trial-
 | `index.html` | Landing page (plans, free-lesson booking) |
 | `entrar.html` | Log in / create account / reset password |
 | `partitura.html` | Shared score viewer (PDF.js): the teacher presents a PDF live, students follow page turns, pen marks and pointer |
+| `aula.html` | Virtual classroom: Daily video (music audio mode) + shared score + shared metronome + tuner |
+| `supabase/functions/daily-room/index.ts` | Server function that opens a private video room per lesson (uses the secret Daily key) |
 | `app.html` | Dashboard: students see lessons, homework, practice; teachers manage students, lessons, scores |
 | `config.js` | Public settings (Supabase URL + publishable key). Never put secret keys here. |
 | `common.js`, `app.css` | Shared code and styles |
@@ -51,6 +53,22 @@ Note: Supabase's built-in email sender only sends a few emails per hour, which i
 
 If the room stays on "Conectando…": Supabase → **Project Settings → Realtime** → make sure public channel access is allowed.
 
+## Turn on the video classroom (about 10 minutes)
+1. **New Daily key.** Daily dashboard → Developers → rotate/create a new API key (the old one was shared in chat). Copy it.
+2. **Save it as a secret in Supabase.** Supabase → Edge Functions → **Secrets** → Add new secret: name `DAILY_API_KEY`, value = your Daily key → Save.
+3. **Create the server function.** Supabase → Edge Functions → **Deploy a new function → Via Editor**. Name it exactly `daily-room`, delete the sample code, paste all of `supabase/functions/daily-room/index.ts`, click **Deploy**.
+4. **Turn off "Verify JWT"** for `daily-room` (function → Details/Settings). The function checks the login itself.
+5. Upload the site files to GitHub again.
+
+### Test a class
+1. As teacher/admin: dashboard → **Clases** → schedule a lesson starting now with your test student.
+2. Click **Abrir aula** → **Entrar a la videollamada**. Allow camera and microphone.
+3. On another device (phone or a private window), log in as the student → **Entrar al aula** on the next-lesson card.
+4. Both wear headphones. Play a few notes: long notes should ring without fading (music audio mode).
+5. Right panel: pick a PDF in **Partitura** (the student follows your pages), start the **Metrónomo** (it starts on the student's device too), try the **Afinador**.
+
+Students can enter from 15 minutes before the lesson until 30 minutes after it ends; teachers anytime.
+
 ## Booking emails (Web3Forms, free: 250/month)
 1. https://web3forms.com → free account with gonz.roch@gmail.com → copy the Access Key.
 2. In `index.html` set `web3formsKey: "your-key"` and upload again.
@@ -64,4 +82,4 @@ Replace `images/guitar.webp` / `images/piano.webp` with your own photos (same na
 - The database rules were tested: students only see their own lessons, homework and practice; teachers see their students; only an admin can change roles.
 
 ## Next
-Step 2: the virtual classroom (`aula.html`): Daily video with music audio mode, metronome, tuner, with this shared score built in; then recording.
+Lesson recording, saved to the student's account.

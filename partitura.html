@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=5">
 <style>
   html, body { height: 100%; }
   body { display: flex; flex-direction: column; }
@@ -43,6 +43,10 @@
   .linkbox { font: 500 .78rem var(--f-mono); word-break: break-all; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; user-select: all; }
   .banner { position: sticky; top: 0; z-index: 5; margin: 0 auto 14px; max-width: 520px; text-align: center; }
   .center-msg { display: grid; place-items: center; min-height: 60vh; text-align: center; padding: 20px; }
+  body.embed .logo, body.embed #exitBtn, body.embed #people, body.embed #title { display: none; }
+  body.embed .bar { padding-block: 6px; padding-inline: 10px; gap: 6px 8px; }
+  body.embed .stage { padding-block: 10px; padding-inline: 8px; }
+  body.embed .ib { width: 34px; height: 34px; }
   @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); } .bar .title { max-width: 18ch; } }
 </style>
 </head>
@@ -81,7 +85,7 @@
   <span class="spacer"></span>
   <div class="people" id="people"></div>
   <span class="small muted" id="online"></span>
-  <a class="btn btn-ghost btn-sm" href="app.html" data-i18n="sc.exit">Salir</a>
+  <a class="btn btn-ghost btn-sm" id="exitBtn" href="app.html" data-i18n="sc.exit">Salir</a>
 </div>
 
 <div class="layout no-side" id="layout">
@@ -113,8 +117,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<script src="common.js"></script>
+<script src="config.js?v=5"></script>
+<script src="common.js?v=5"></script>
 <script>
 (function () {
   const K = window.Compas;
@@ -126,6 +130,8 @@
   const scoreId = params.get("score");
   const salaParam = (params.get("sala") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const EMBED = params.get("embed") === "1";   // shown inside the classroom (aula.html)
+  if (EMBED) document.body.classList.add("embed");
 
   const st = {
     me: null, mode: null,           // 'present' | 'follow' | 'solo'
@@ -156,7 +162,7 @@
     st.me = prof || { id: data.session.user.id, full_name: data.session.user.email, role: "student" };
     const staff = st.me.role === "teacher" || st.me.role === "admin";
 
-    if (salaParam) { st.mode = "follow"; return startFollow(salaParam); }
+    if (salaParam && !(scoreId && staff)) { st.mode = "follow"; return startFollow(salaParam); }
     if (!scoreId) { showMsg(`<p class="muted">${esc(t("sc.notFound"))}</p>`); return; }
 
     const { data: score } = await sb.from("scores").select("*").eq("id", scoreId).maybeSingle();
@@ -294,10 +300,10 @@
 
   /* Teacher */
   function startPresent() {
-    let code = null; try { code = sessionStorage.getItem("sala-" + scoreId); } catch (e) {}
+    let code = salaParam || null; if (!code) { try { code = sessionStorage.getItem("sala-" + scoreId); } catch (e) {} }
     if (!code) { code = newCode(); try { sessionStorage.setItem("sala-" + scoreId, code); } catch (e) {} }
     const link = new URL("partitura.html?sala=" + code, location.href).href;
-    $("layout").classList.remove("no-side"); $("side").hidden = false; $("online").hidden = true;
+    if (!EMBED) { $("layout").classList.remove("no-side"); $("side").hidden = false; $("online").hidden = true; }
     $("code").textContent = code; $("shareLink").textContent = link;
     $("copyLink").onclick = async () => {
       try { await navigator.clipboard.writeText(link); toast(t("sc.copied")); }
@@ -357,7 +363,7 @@
   /* Student */
   function startFollow(code) {
     $("title").textContent = t("sc.code") + " " + code;
-    showMsg(`<div class="stack" style="justify-items:center"><span class="live-dot" style="background:var(--accent)"></span><p class="muted">${esc(t("sc.waiting"))}</p></div>`);
+    showMsg(`<div class="stack" style="justify-items:center"><span class="live-dot" style="background:var(--accent)"></span><p class="muted">${esc(t(EMBED ? "au.noScore" : "sc.waiting"))}</p></div>`);
     updateUi();
     joinChannel(code, {
       __ready: () => send("hello", {}),
