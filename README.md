@@ -7,6 +7,7 @@ Static site for GitHub Pages + Supabase (accounts, homework) + Web3Forms (trial-
 | --- | --- |
 | `index.html` | Landing page (plans, free-lesson booking) |
 | `entrar.html` | Log in / create account / reset password |
+| `partitura.html` | Shared score viewer (PDF.js): the teacher presents a PDF live, students follow page turns, pen marks and pointer |
 | `app.html` | Dashboard: students see lessons, homework, practice; teachers manage students, lessons, scores |
 | `config.js` | Public settings (Supabase URL + publishable key). Never put secret keys here. |
 | `common.js`, `app.css` | Shared code and styles |
@@ -40,6 +41,16 @@ As admin: assign homework and schedule a lesson with that student. Log in as the
 
 Note: Supabase's built-in email sender only sends a few emails per hour, which is fine for testing. Before launch, connect a free email provider (e.g. Resend) in **Authentication → Emails → SMTP**.
 
+## Test the shared score (PDF)
+1. Log in as admin/teacher → **Partituras** → upload any PDF score.
+2. Click **● Presentar en vivo**. You'll see a 6-letter room code and a link.
+3. Open the link in a private window (or another device) logged in as a student, or have the student type the code in **"¿Tu maestro te dio un código?"** on their dashboard.
+4. Turn pages, draw with the pen, highlight, or use **Señalar** to point: the student sees it instantly.
+   The student can untick **Seguir al maestro** to look ahead and tap the orange button to jump back.
+5. Attach the score to a homework task and the student can open it from their dashboard later.
+
+If the room stays on "Conectando…": Supabase → **Project Settings → Realtime** → make sure public channel access is allowed.
+
 ## Booking emails (Web3Forms, free: 250/month)
 1. https://web3forms.com → free account with gonz.roch@gmail.com → copy the Access Key.
 2. In `index.html` set `web3formsKey: "your-key"` and upload again.
@@ -53,4 +64,4 @@ Replace `images/guitar.webp` / `images/piano.webp` with your own photos (same na
 - The database rules were tested: students only see their own lessons, homework and practice; teachers see their students; only an admin can change roles.
 
 ## Next
-Step 2: the virtual classroom (`aula.html`): Daily video with music audio mode, metronome, tuner; then shared scores and recording.
+Step 2: the virtual classroom (`aula.html`): Daily video with music audio mode, metronome, tuner, with this shared score built in; then recording.

@@ -102,6 +102,8 @@
 (function () {
   const { sb, t, C, applyStatic, bindLang, fail } = window.Compas;
   const $ = (id) => document.getElementById(id);
+  const nextParam = new URLSearchParams(location.search).get("next");
+  const DEST = nextParam && /^[a-z]+\.html(\?[A-Za-z0-9=&_-]*)?$/.test(nextParam) ? nextParam : "app.html";
   const forms = ["fIn", "fUp", "fForgot", "fNewPass"];
   function show(id) { forms.forEach((f) => ($(f).hidden = f !== id)); $("authTabs").hidden = !(id === "fIn" || id === "fUp"); $("msg").hidden = true; }
   function message(text) { forms.forEach((f) => ($(f).hidden = true)); $("authTabs").hidden = true; $("msg").textContent = text; $("msg").hidden = false; }
@@ -125,7 +127,7 @@
   sb.auth.onAuthStateChange((event) => {
     if (event === "PASSWORD_RECOVERY") { recovering = true; show("fNewPass"); }
   });
-  sb.auth.getSession().then(({ data }) => { if (data.session && !recovering) location.replace("app.html"); });
+  sb.auth.getSession().then(({ data }) => { if (data.session && !recovering) location.replace(DEST); });
 
   $("fIn").addEventListener("submit", async (e) => {
     e.preventDefault(); $("in-err").hidden = true;
@@ -133,7 +135,7 @@
     if (!email || !password) { $("in-err").textContent = t("err.required"); $("in-err").hidden = false; return; }
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) { $("in-err").textContent = /invalid/i.test(error.message) ? t("err.badLogin") : error.message; $("in-err").hidden = false; return; }
-    location.replace("app.html");
+    location.replace(DEST);
   });
 
   $("fUp").addEventListener("submit", async (e) => {
@@ -150,7 +152,7 @@
       },
     });
     if (error) { $("up-err").textContent = error.message; $("up-err").hidden = false; return; }
-    if (data.session) location.replace("app.html"); else message(t("login.checkEmail"));
+    if (data.session) location.replace(DEST); else message(t("login.checkEmail"));
   });
 
   $("fForgot").addEventListener("submit", async (e) => {
@@ -166,7 +168,7 @@
     const password = $("np-pass").value; if (password.length < 8) return window.Compas.toast(t("login.minPass"), true);
     const { error } = await sb.auth.updateUser({ password });
     if (error) return fail(error);
-    window.Compas.toast(t("login.passSaved")); setTimeout(() => location.replace("app.html"), 900);
+    window.Compas.toast(t("login.passSaved")); setTimeout(() => location.replace(DEST), 900);
   });
 })();
 </script>

@@ -135,6 +135,11 @@
           </div>
 
           <aside class="stack-lg">
+            <form class="card stack" data-form="join" style="gap:10px">
+              <h2>${esc(t("sc.joinTitle"))}</h2>
+              <div style="display:flex;gap:8px"><div class="field" style="flex:1"><input name="code" maxlength="6" autocomplete="off" placeholder="${esc(t("sc.joinPh"))}" aria-label="${esc(t("sc.joinPh"))}" style="text-transform:uppercase;font-family:var(--f-mono);letter-spacing:.1em"></div>
+              <button class="btn" type="submit">${esc(t("sc.joinBtn"))}</button></div>
+            </form>
             <div class="card stack">
               <h2>${esc(t("st.week"))}</h2>
               <div class="row2">
@@ -166,7 +171,7 @@
         ${h.instructions ? `<p style="white-space:pre-wrap">${esc(h.instructions)}</p>` : ""}
         ${h.teacher_feedback ? `<div class="card" style="padding:12px 14px;background:var(--good-soft);border-color:transparent"><b class="small">${esc(t("hw.feedback"))}:</b> <span style="white-space:pre-wrap">${esc(h.teacher_feedback)}</span></div>` : ""}
         <div class="item-actions">
-          ${h.score ? `<button class="btn btn-ghost btn-sm" data-action="open-score" data-path="${esc(h.score.file_path)}">♪ ${esc(t("hw.score"))}</button>` : ""}
+          ${h.score ? (h.score.kind === "pdf" ? `<a class="btn btn-ghost btn-sm" href="partitura.html?score=${h.score.id}">♪ ${esc(t("hw.score"))}</a>` : `<button class="btn btn-ghost btn-sm" data-action="open-score" data-path="${esc(h.score.file_path)}">♪ ${esc(t("hw.score"))}</button>`) : ""}
           <button class="btn btn-ghost btn-sm" data-action="toggle-log">${esc(t("hw.log"))}</button>
           ${h.status === "assigned" ? `<button class="btn btn-sm" data-action="hw-done">${esc(t("hw.markDone"))}</button>`
             : h.status === "done" ? `<button class="btn btn-ghost btn-sm" data-action="hw-undo">${esc(t("hw.undo"))}</button>` : ""}
@@ -380,7 +385,7 @@
           ${S.scores.length ? `<div class="list">${S.scores.map((s) => `
             <article class="item" data-score="${s.id}" data-path="${esc(s.file_path)}">
               <div class="item-head"><div><h3>${esc(s.title)}</h3><div class="small muted">${esc(s.composer || "")}${s.instrument ? (s.composer ? " · " : "") + esc(instName(s.instrument)) : ""}</div></div><span class="pill gray">${kindLabel[s.kind] || s.kind}</span></div>
-              <div class="item-actions"><button class="btn btn-ghost btn-sm" data-action="open-score" data-path="${esc(s.file_path)}">${esc(t("s.open"))}</button>
+              <div class="item-actions">${s.kind === "pdf" ? `<a class="btn btn-sm" href="partitura.html?score=${s.id}">● ${esc(t("sc.present"))}</a>` : ""}<button class="btn btn-ghost btn-sm" data-action="open-score" data-path="${esc(s.file_path)}">${esc(t("s.open"))}</button>
               ${s.owner_id === me.id || me.role === "admin" ? `<button class="btn btn-danger btn-sm" data-action="score-delete">${esc(t("t.delete"))}</button>` : ""}</div>
             </article>`).join("")}</div>` : `<div class="empty">${esc(t("s.none"))}</div>`}
         </section>
@@ -474,6 +479,11 @@
     const f = e.target, fd = new FormData(f);
     const btn = f.querySelector("button[type=submit]"); if (btn) btn.disabled = true;
     try {
+      if (f.dataset.form === "join") {
+        const code = String(fd.get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (code.length === 6) location.href = "partitura.html?sala=" + code; else toast(t("err.required"), true);
+        return;
+      }
       if (f.matches("[data-log-form]")) {
         const hwId = f.closest("[data-hw]").dataset.hw;
         const file = fd.get("file");

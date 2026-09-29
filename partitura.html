@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Partitura · Compás</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="app.css">
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding-block: 10px; padding-inline: 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .bar .title { font: 700 1rem var(--f-display); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; }
+  .grp { display: flex; align-items: center; gap: 4px; }
+  .ib { width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; display: grid; place-items: center; font: 700 1rem var(--f-body); }
+  .ib:disabled { opacity: .4; cursor: default; }
+  .ib[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .ib svg { width: 18px; height: 18px; }
+  .pageno { font: 600 .85rem var(--f-mono); min-width: 7ch; text-align: center; font-variant-numeric: tabular-nums; }
+  .swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1.5px var(--line); cursor: pointer; padding: 0; }
+  .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--ink); }
+  .spacer { flex: 1; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); display: inline-block; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+  .people { display: flex; align-items: center; gap: 6px; }
+  .people .avatar { width: 30px; height: 30px; font-size: .7rem; border: 2px solid var(--surface); margin-left: -8px; }
+  .people .avatar:first-child { margin-left: 0; }
+  .people .avatar.t { background: var(--orange); color: var(--orange-ink); }
+
+  .layout { flex: 1; display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+  .layout.no-side { grid-template-columns: 1fr; }
+  .stage { overflow: auto; background: var(--surface-2); padding-block: 20px; padding-inline: 16px; min-width: 0; position: relative; }
+  .sheet { position: relative; margin: 0 auto; box-shadow: var(--shadow); background: #fff; width: max-content; }
+  .sheet canvas { display: block; }
+  #ink { position: absolute; inset: 0; touch-action: none; }
+  .sheet.drawing #ink { cursor: crosshair; }
+  .laser { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: rgba(255,120,40,.55); box-shadow: 0 0 0 6px rgba(255,120,40,.2), 0 0 18px rgba(255,120,40,.8); pointer-events: none; transition: opacity .4s; }
+  .side { border-left: 1px solid var(--line); background: var(--surface); padding: 18px; display: grid; gap: 18px; align-content: start; overflow: auto; }
+  .code { font: 800 2rem/1 var(--f-mono); letter-spacing: .12em; }
+  .linkbox { font: 500 .78rem var(--f-mono); word-break: break-all; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; user-select: all; }
+  .banner { position: sticky; top: 0; z-index: 5; margin: 0 auto 14px; max-width: 520px; text-align: center; }
+  .center-msg { display: grid; place-items: center; min-height: 60vh; text-align: center; padding: 20px; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); } .bar .title { max-width: 18ch; } }
+</style>
+</head>
+<body>
+<div class="bar" id="bar">
+  <a class="logo" href="app.html" aria-label="Compás"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 18V6l10-2v12" stroke="#FFB26B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="#FFB26B"/><circle cx="16.5" cy="16" r="2.6" fill="#FFB26B"/></svg></span></a>
+  <span class="title" id="title">…</span>
+  <span class="pill" id="status" hidden></span>
+
+  <div class="grp" role="group">
+    <button class="ib" id="prev" data-i18n-title="sc.prev" aria-label="prev">‹</button>
+    <span class="pageno" id="pageno">– / –</span>
+    <button class="ib" id="next" aria-label="next">›</button>
+  </div>
+  <div class="grp" role="group">
+    <button class="ib" id="zoomOut" aria-label="zoom out">−</button>
+    <button class="ib" id="fit" aria-label="fit" style="width:auto;padding:0 10px;font-size:.8rem" data-i18n="sc.fit">Ajustar</button>
+    <button class="ib" id="zoomIn" aria-label="zoom in">+</button>
+  </div>
+
+  <div class="grp" role="group" id="tools" hidden>
+    <button class="ib" data-tool="move" aria-pressed="true" aria-label="move"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5a1.5 1.5 0 0 1 3 0v5M12 10V4a1.5 1.5 0 0 1 3 0v6M15 10V6a1.5 1.5 0 0 1 3 0v7a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-3l-2.5-4.5a1.5 1.5 0 0 1 2.6-1.5L6 13V7a1.5 1.5 0 0 1 3 0v4"/></svg></button>
+    <button class="ib" data-tool="pen" aria-pressed="false" aria-label="pen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg></button>
+    <button class="ib" data-tool="hl" aria-pressed="false" aria-label="highlight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15l-4 4h6l2-2"/><path d="M9 15l7-11 4 3-7 11z"/></svg></button>
+    <button class="ib" data-tool="point" aria-pressed="false" aria-label="point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8"/></svg></button>
+    <span style="width:6px"></span>
+    <button class="swatch" data-color="#E5484D" style="background:#E5484D" aria-pressed="true" aria-label="red"></button>
+    <button class="swatch" data-color="#1F5FD1" style="background:#1F5FD1" aria-pressed="false" aria-label="blue"></button>
+    <button class="swatch" data-color="#1E7A4C" style="background:#1E7A4C" aria-pressed="false" aria-label="green"></button>
+    <span style="width:6px"></span>
+    <button class="ib" id="undo" aria-label="undo" style="width:auto;padding:0 10px;font-size:.8rem" data-i18n="sc.undo">Deshacer</button>
+    <button class="ib" id="clear" aria-label="clear" style="width:auto;padding:0 10px;font-size:.8rem" data-i18n="sc.clear">Borrar página</button>
+  </div>
+
+  <label class="check" id="followWrap" hidden><input type="checkbox" id="follow" checked> <span data-i18n="sc.follow">Seguir al maestro</span></label>
+  <span class="spacer"></span>
+  <div class="people" id="people"></div>
+  <span class="small muted" id="online"></span>
+  <a class="btn btn-ghost btn-sm" href="app.html" data-i18n="sc.exit">Salir</a>
+</div>
+
+<div class="layout no-side" id="layout">
+  <div class="stage" id="stage">
+    <div class="banner" id="backBanner" hidden><button class="btn btn-orange btn-sm" id="backBtn"></button></div>
+    <div class="center-msg" id="msg"><p class="muted">…</p></div>
+    <div class="sheet" id="sheet" hidden>
+      <canvas id="pdfCanvas"></canvas>
+      <canvas id="ink"></canvas>
+      <div class="laser" id="laser" style="opacity:0"></div>
+    </div>
+  </div>
+  <aside class="side" id="side" hidden>
+    <div class="stack" style="gap:8px">
+      <span class="eyebrow" data-i18n="sc.code">Código de sala</span>
+      <div class="code" id="code">——</div>
+    </div>
+    <div class="stack" style="gap:8px">
+      <div class="linkbox" id="shareLink"></div>
+      <button class="btn btn-sm" id="copyLink" data-i18n="sc.copy">Copiar enlace</button>
+      <p class="small muted" data-i18n="sc.shareHint">Manda este enlace a tus alumnos.</p>
+    </div>
+    <div class="stack" style="gap:8px">
+      <span class="eyebrow" id="roomCount"></span>
+      <div class="list" id="roster" style="gap:6px"></div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const K = window.Compas;
+  const { sb, t, esc, initials, toast, fail, signedUrl } = K;
+  const $ = (id) => document.getElementById(id);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  const params = new URLSearchParams(location.search);
+  const scoreId = params.get("score");
+  const salaParam = (params.get("sala") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+
+  const st = {
+    me: null, mode: null,           // 'present' | 'follow' | 'solo'
+    pdf: null, url: null, title: "", page: 1, pages: 0, zoom: 1,
+    tool: "move", color: "#E5484D",
+    strokes: {},                    // page -> [{c,w,hl,pts:[[x,y]]}]
+    live: {},                       // stroke id -> in-progress stroke (follower)
+    follow: true, teacherPage: 1, channel: null, peers: [], teacherHere: false, gotState: false,
+  };
+  let renderTask = null, rendering = Promise.resolve();
+
+  K.applyStatic();
+  K.bindLang(() => { updateUi(); renderRoster(); });
+
+  function showMsg(html) { $("msg").innerHTML = html; $("msg").hidden = false; $("sheet").hidden = true; }
+  function setStatus(kind) {
+    const s = $("status"); s.hidden = false;
+    if (kind === "live") { s.className = "pill bad"; s.innerHTML = `<span class="live-dot"></span> ${esc(t("sc.live"))}`; }
+    else { s.className = "pill gray"; s.textContent = t("sc.connecting"); }
+  }
+  const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
+
+  /* ---------- Boot ---------- */
+  async function boot() {
+    const { data } = await sb.auth.getSession();
+    if (!data.session) { location.replace("entrar.html?next=" + encodeURIComponent("partitura.html" + location.search)); return; }
+    const { data: prof } = await sb.from("profiles").select("*").eq("id", data.session.user.id).maybeSingle();
+    st.me = prof || { id: data.session.user.id, full_name: data.session.user.email, role: "student" };
+    const staff = st.me.role === "teacher" || st.me.role === "admin";
+
+    if (salaParam) { st.mode = "follow"; return startFollow(salaParam); }
+    if (!scoreId) { showMsg(`<p class="muted">${esc(t("sc.notFound"))}</p>`); return; }
+
+    const { data: score } = await sb.from("scores").select("*").eq("id", scoreId).maybeSingle();
+    if (!score) { showMsg(`<p class="muted">${esc(t("sc.notFound"))}</p>`); return; }
+    if (score.kind !== "pdf") { showMsg(`<p class="muted">${esc(t("sc.onlyPdf"))}</p>`); $("title").textContent = score.title; return; }
+    st.title = score.title; $("title").textContent = score.title;
+    st.url = await signedUrl("scores", score.file_path, 4 * 3600);
+    await openPdf(st.url);
+    if (staff) { st.mode = "present"; startPresent(); } else { st.mode = "solo"; updateUi(); }
+  }
+
+  /* ---------- PDF ---------- */
+  async function openPdf(url) {
+    st.pdf = await pdfjsLib.getDocument({ url }).promise;
+    st.pages = st.pdf.numPages;
+    st.page = Math.min(Math.max(1, st.page), st.pages);
+    $("msg").hidden = true; $("sheet").hidden = false;
+    await renderPage();
+  }
+
+  function renderPage() {
+    rendering = rendering.then(async () => {
+      if (!st.pdf) return;
+      const page = await st.pdf.getPage(st.page);
+      const base = page.getViewport({ scale: 1 });
+      const avail = Math.max(280, $("stage").clientWidth - 32);
+      const cssW = Math.round(Math.min(avail, 1100) * st.zoom);
+      const scale = cssW / base.width;
+      const vp = page.getViewport({ scale: scale * dpr });
+      const c = $("pdfCanvas"), ink = $("ink");
+      const cssH = Math.round(vp.height / dpr);
+      for (const el of [c, ink]) { el.width = Math.round(vp.width); el.height = Math.round(vp.height); el.style.width = cssW + "px"; el.style.height = cssH + "px"; }
+      if (renderTask) { try { renderTask.cancel(); } catch (e) {} }
+      renderTask = page.render({ canvasContext: c.getContext("2d"), viewport: vp });
+      try { await renderTask.promise; } catch (e) { if (e && e.name !== "RenderingCancelledException") throw e; }
+      drawInk();
+      updateUi();
+    }).catch(fail);
+    return rendering;
+  }
+
+  function drawStroke(ctx, s, W, H) {
+    if (!s.pts.length) return;
+    ctx.save();
+    ctx.globalAlpha = s.hl ? 0.35 : 1;
+    ctx.strokeStyle = s.c; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.lineWidth = (s.hl ? 18 : 3.2) * (W / 1000);
+    ctx.beginPath();
+    s.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x * W, y * H) : ctx.moveTo(x * W, y * H)));
+    if (s.pts.length === 1) ctx.lineTo(s.pts[0][0] * W + 0.1, s.pts[0][1] * H);
+    ctx.stroke(); ctx.restore();
+  }
+  function drawInk() {
+    const ink = $("ink"), ctx = ink.getContext("2d"), W = ink.width, H = ink.height;
+    ctx.clearRect(0, 0, W, H);
+    (st.strokes[st.page] || []).forEach((s) => drawStroke(ctx, s, W, H));
+    Object.values(st.live).filter((s) => s.page === st.page).forEach((s) => drawStroke(ctx, s, W, H));
+  }
+
+  function showLaser(x, y) {
+    const l = $("laser"), ink = $("ink");
+    l.style.left = x * ink.clientWidth + "px"; l.style.top = y * ink.clientHeight + "px"; l.style.opacity = 1;
+    clearTimeout(showLaser.tm); showLaser.tm = setTimeout(() => (l.style.opacity = 0), 1500);
+  }
+
+  function updateUi() {
+    $("pageno").textContent = st.pages ? `${st.page} / ${st.pages}` : "– / –";
+    const locked = st.mode === "follow" && st.follow;
+    $("prev").disabled = locked || st.page <= 1;
+    $("next").disabled = locked || st.page >= st.pages;
+    $("tools").hidden = st.mode !== "present";
+    $("followWrap").hidden = st.mode !== "follow";
+    $("sheet").classList.toggle("drawing", st.mode === "present" && st.tool !== "move");
+    const bb = $("backBanner");
+    bb.hidden = !(st.mode === "follow" && !st.follow && st.teacherPage !== st.page);
+    $("backBtn").textContent = t("sc.back", { p: st.teacherPage });
+  }
+
+  /* ---------- Navigation ---------- */
+  function goTo(p, broadcast) {
+    p = Math.min(Math.max(1, p), st.pages || 1);
+    if (p === st.page) return;
+    st.page = p; st.live = {};
+    renderPage();
+    if (broadcast && st.mode === "present") send("page", { page: p });
+  }
+  $("prev").addEventListener("click", () => goTo(st.page - 1, true));
+  $("next").addEventListener("click", () => goTo(st.page + 1, true));
+  $("zoomIn").addEventListener("click", () => { st.zoom = Math.min(3, st.zoom * 1.2); renderPage(); });
+  $("zoomOut").addEventListener("click", () => { st.zoom = Math.max(0.4, st.zoom / 1.2); renderPage(); });
+  $("fit").addEventListener("click", () => { st.zoom = 1; renderPage(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches("input, textarea")) return;
+    if (st.mode === "follow" && st.follow) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown") goTo(st.page + 1, true);
+    if (e.key === "ArrowLeft" || e.key === "PageUp") goTo(st.page - 1, true);
+  });
+  let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderPage, 150); });
+  $("follow").addEventListener("change", (e) => { st.follow = e.target.checked; if (st.follow) goTo(st.teacherPage); updateUi(); });
+  $("backBtn").addEventListener("click", () => { st.follow = true; $("follow").checked = true; goTo(st.teacherPage); updateUi(); });
+
+  /* ---------- Realtime ---------- */
+  function send(event, payload) { if (st.channel) st.channel.send({ type: "broadcast", event, payload }); }
+  function fullState() { return { url: st.url, title: st.title, page: st.page, strokes: st.strokes }; }
+
+  function joinChannel(code, handlers) {
+    setStatus("connecting");
+    const ch = sb.channel("compas-sala-" + code, { config: { broadcast: { self: false }, presence: { key: st.me.id } } });
+    Object.entries(handlers).forEach(([ev, fn]) => ch.on("broadcast", { event: ev }, ({ payload }) => fn(payload)));
+    ch.on("presence", { event: "sync" }, () => {
+      const state = ch.presenceState();
+      st.peers = Object.values(state).map((arr) => arr[0]).filter(Boolean);
+      const hadTeacher = st.teacherHere;
+      st.teacherHere = st.peers.some((p) => p.role === "teacher");
+      if (st.mode === "follow" && hadTeacher && !st.teacherHere) toast(t("sc.teacherLeft"));
+      renderRoster();
+    });
+    ch.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        setStatus("live");
+        await ch.track({ id: st.me.id, name: st.me.full_name || "?", role: st.mode === "present" ? "teacher" : "student" });
+        handlers.__ready && handlers.__ready();
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { setStatus("connecting"); }
+    });
+    st.channel = ch;
+  }
+
+  function renderRoster() {
+    const people = st.peers.slice().sort((a, b) => (a.role === "teacher" ? -1 : 1));
+    $("people").innerHTML = people.slice(0, 6).map((p) => `<span class="avatar ${p.role === "teacher" ? "t" : ""}" title="${esc(p.name)}">${esc(initials(p.name))}</span>`).join("");
+    $("online").textContent = people.length ? t("sc.online", { n: people.length }) : "";
+    $("roomCount").textContent = t("sc.online", { n: people.length });
+    $("roster").innerHTML = people.map((p) => `<div style="display:flex;gap:10px;align-items:center"><span class="avatar ${p.role === "teacher" ? "t" : ""}" style="width:30px;height:30px;font-size:.7rem${p.role === "teacher" ? ";background:var(--orange);color:var(--orange-ink)" : ""}">${esc(initials(p.name))}</span><span>${esc(p.name)}${p.id === st.me.id ? ` <span class="muted small">(${esc(t("sc.you"))})</span>` : ""}${p.role === "teacher" ? ` <span class="pill orange">${esc(t("sc.teacher"))}</span>` : ""}</span></div>`).join("");
+  }
+
+  /* Teacher */
+  function startPresent() {
+    let code = null; try { code = sessionStorage.getItem("sala-" + scoreId); } catch (e) {}
+    if (!code) { code = newCode(); try { sessionStorage.setItem("sala-" + scoreId, code); } catch (e) {} }
+    const link = new URL("partitura.html?sala=" + code, location.href).href;
+    $("layout").classList.remove("no-side"); $("side").hidden = false; $("online").hidden = true;
+    $("code").textContent = code; $("shareLink").textContent = link;
+    $("copyLink").onclick = async () => {
+      try { await navigator.clipboard.writeText(link); toast(t("sc.copied")); }
+      catch (e) { const r = document.createRange(); r.selectNodeContents($("shareLink")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+    };
+    joinChannel(code, {
+      hello: () => send("state", fullState()),
+      __ready: () => send("state", fullState()),
+    });
+    renderPage(); // layout width changed (side panel)
+    setupDrawing();
+  }
+
+  function setupDrawing() {
+    document.querySelectorAll("[data-tool]").forEach((b) => b.addEventListener("click", () => {
+      st.tool = b.dataset.tool;
+      document.querySelectorAll("[data-tool]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      updateUi();
+    }));
+    document.querySelectorAll("[data-color]").forEach((b) => b.addEventListener("click", () => {
+      st.color = b.dataset.color;
+      document.querySelectorAll("[data-color]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    }));
+    $("undo").addEventListener("click", () => { const arr = st.strokes[st.page]; if (arr && arr.length) { arr.pop(); drawInk(); send("undo", { page: st.page }); } });
+    $("clear").addEventListener("click", () => { st.strokes[st.page] = []; drawInk(); send("clear", { page: st.page }); });
+
+    const ink = $("ink");
+    let cur = null, lastSend = 0, lastPoint = 0;
+    const pos = (e) => { const r = ink.getBoundingClientRect(); return [+((e.clientX - r.left) / r.width).toFixed(4), +((e.clientY - r.top) / r.height).toFixed(4)]; };
+    ink.addEventListener("pointerdown", (e) => {
+      if (st.tool === "move") return;
+      e.preventDefault(); ink.setPointerCapture(e.pointerId);
+      const p = pos(e);
+      if (st.tool === "point") { showLaser(...p); send("point", { page: st.page, x: p[0], y: p[1] }); cur = { point: true }; return; }
+      cur = { id: Math.random().toString(36).slice(2, 9), page: st.page, c: st.color, hl: st.tool === "hl", pts: [p] };
+      st.live[cur.id] = cur; drawInk();
+    });
+    ink.addEventListener("pointermove", (e) => {
+      if (!cur) return;
+      const p = pos(e), now = performance.now();
+      if (cur.point) { showLaser(...p); if (now - lastPoint > 60) { lastPoint = now; send("point", { page: st.page, x: p[0], y: p[1] }); } return; }
+      cur.pts.push(p); drawInk();
+      if (now - lastSend > 70) { lastSend = now; send("ink", cur); }
+    });
+    const end = () => {
+      if (!cur) return;
+      if (!cur.point) {
+        delete st.live[cur.id];
+        (st.strokes[cur.page] = st.strokes[cur.page] || []).push({ c: cur.c, hl: cur.hl, pts: cur.pts });
+        send("stroke", cur); drawInk();
+      }
+      cur = null;
+    };
+    ink.addEventListener("pointerup", end); ink.addEventListener("pointercancel", end);
+  }
+
+  /* Student */
+  function startFollow(code) {
+    $("title").textContent = t("sc.code") + " " + code;
+    showMsg(`<div class="stack" style="justify-items:center"><span class="live-dot" style="background:var(--accent)"></span><p class="muted">${esc(t("sc.waiting"))}</p></div>`);
+    updateUi();
+    joinChannel(code, {
+      __ready: () => send("hello", {}),
+      state: async (s) => {
+        st.strokes = s.strokes || {}; st.teacherPage = s.page;
+        if (s.title) { st.title = s.title; $("title").textContent = s.title; }
+        if (st.follow) st.page = s.page;
+        if (!st.pdf || st.url !== s.url) { st.url = s.url; try { await openPdf(s.url); } catch (e) { fail(e); } }
+        else renderPage();
+        st.gotState = true; updateUi();
+      },
+      page: ({ page }) => { st.teacherPage = page; if (st.follow) goTo(page); else updateUi(); },
+      ink: (s) => { st.live[s.id] = s; if (s.page === st.page) drawInk(); },
+      stroke: (s) => { delete st.live[s.id]; (st.strokes[s.page] = st.strokes[s.page] || []).push({ c: s.c, hl: s.hl, pts: s.pts }); if (s.page === st.page) drawInk(); },
+      undo: ({ page }) => { const a = st.strokes[page]; if (a) a.pop(); if (page === st.page) drawInk(); },
+      clear: ({ page }) => { st.strokes[page] = []; if (page === st.page) drawInk(); },
+      point: ({ page, x, y }) => { if (page === st.page) showLaser(x, y); },
+    });
+  }
+
+  boot().catch(fail);
+})();
+</script>
+</body>
+</html>
