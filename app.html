@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi cuenta · Compás</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="logo" href="index.html"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 18V6l10-2v12" stroke="#FFB26B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="#FFB26B"/><circle cx="16.5" cy="16" r="2.6" fill="#FFB26B"/></svg></span><span class="brand-name">Compás</span></a>
+    <div class="right">
+      <span class="who" id="who"></span>
+      <span class="pill" id="roleBadge" hidden></span>
+      <div class="seg" role="group" aria-label="Idioma / Language"><button type="button" data-lang="es">ES</button><button type="button" data-lang="en">EN</button></div>
+      <button class="btn btn-ghost btn-sm" type="button" id="logout" data-i18n="nav.logout">Salir</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" style="padding-block: 28px 64px">
+  <div id="view"><div class="loading">…</div></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const K = window.Compas;
+  const { sb, t, esc, initials, instName, planName, fmtDateTime, fmtLongDateTime, fmtDate, toast, fail, signedUrl, safeName, C } = K;
+  const $ = (id) => document.getElementById(id);
+  const view = $("view");
+  let me = null;
+  const S = { tab: "students", students: [], allStudents: [], selected: null, scores: [], detail: null, lessons: [], users: [], stu: null };
+
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const isStaff = () => me && (me.role === "teacher" || me.role === "admin");
+  const levelName = (l) => (l == null || l === "" ? "—" : t("lvl." + l));
+  function scoreKind(name) {
+    const ext = (name.split(".").pop() || "").toLowerCase();
+    if (ext === "pdf") return "pdf";
+    if (["gp", "gp3", "gp4", "gp5", "gpx"].includes(ext)) return "gp";
+    if (["xml", "musicxml", "mxl"].includes(ext)) return "musicxml";
+    return "other";
+  }
+  async function q(promise) { const { data, error } = await promise; if (error) throw error; return data; }
+
+  /* ================= BOOT ================= */
+  K.applyStatic();
+  K.bindLang(() => render());
+  $("logout").addEventListener("click", async () => { await sb.auth.signOut(); location.replace("entrar.html"); });
+
+  async function boot() {
+    const { data } = await sb.auth.getSession();
+    if (!data.session) return location.replace("entrar.html");
+    const uid = data.session.user.id;
+    const { data: prof, error } = await sb.from("profiles").select("*").eq("id", uid).maybeSingle();
+    if (error || !prof) { view.innerHTML = `<div class="empty">${esc(t("err.noProfile"))}</div>`; return; }
+    me = prof;
+    $("who").textContent = me.full_name || me.email;
+    const rb = $("roleBadge"); rb.hidden = false; rb.className = "pill" + (me.role === "student" ? " gray" : " orange");
+    if (isStaff()) { await loadTeacherBase(); if (S.students[0]) await selectStudent(S.students[0].id, false); }
+    else await loadStudent();
+    render();
+  }
+
+  function render() {
+    if (!me) return;
+    $("roleBadge").textContent = t("role." + me.role);
+    if (isStaff()) renderTeacher(); else renderStudent();
+  }
+
+  /* ================= STUDENT ================= */
+  async function loadStudent() {
+    const [hw, ls, pl] = await Promise.all([
+      q(sb.from("homework").select("*, score:scores(id,title,file_path,kind), teacher:profiles!homework_teacher_id_fkey(full_name)").eq("student_id", me.id).order("created_at", { ascending: false })),
+      q(sb.from("lesson_students").select("lesson:lessons(*, teacher:profiles!lessons_teacher_id_fkey(full_name))").eq("student_id", me.id)),
+      q(sb.from("practice_logs").select("*, homework(title)").eq("student_id", me.id).order("created_at", { ascending: false }).limit(20)),
+    ]);
+    const now = Date.now();
+    const lessons = ls.map((r) => r.lesson).filter(Boolean).filter((l) => l.status === "scheduled" && new Date(l.starts_at).getTime() + l.duration_min * 60000 > now)
+      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+    const order = { assigned: 0, done: 1, reviewed: 2 };
+    hw.sort((a, b) => order[a.status] - order[b.status] || String(a.due_date || "9999").localeCompare(String(b.due_date || "9999")));
+    S.stu = { hw, lessons, practice: pl };
+  }
+
+  function hwStatusPill(h) {
+    if (h.status === "reviewed") return `<span class="pill good">${esc(t("hw.reviewed"))}</span>`;
+    if (h.status === "done") return `<span class="pill good">${esc(t("hw.done"))}</span>`;
+    if (h.due_date && new Date(h.due_date + "T23:59:59") < today()) return `<span class="pill bad">${esc(t("hw.overdue"))}</span>`;
+    return `<span class="pill orange">${esc(t("hw.assigned"))}</span>`;
+  }
+  function hwMeta(h) {
+    const bits = [];
+    if (h.due_date) bits.push(`<span>${esc(t("hw.due", { d: fmtDate(h.due_date) }))}</span>`);
+    if (h.target_bpm) bits.push(`<span class="mono">${esc(t("hw.target", { b: h.target_bpm }))}</span>`);
+    if (h.teacher && h.teacher.full_name) bits.push(`<span>${esc(h.teacher.full_name)}</span>`);
+    return bits.join("");
+  }
+
+  function renderStudent() {
+    const { hw, lessons, practice } = S.stu;
+    const next = lessons[0];
+    const monday = today(); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const week = practice.filter((p) => new Date(p.created_at) >= monday);
+    const weekMin = week.reduce((s, p) => s + p.minutes, 0);
+    const weekDays = new Set(week.map((p) => new Date(p.created_at).toDateString())).size;
+
+    view.innerHTML = `
+      <div class="stack-lg">
+        <div class="stack" style="gap:4px">
+          <span class="eyebrow">${esc(instName(me.instrument))}${me.plan ? " · " + esc(planName(me.plan)) : ""}</span>
+          <h1>${esc(t("hello", { n: (me.full_name || "").split(" ")[0] }))}</h1>
+        </div>
+        <div class="grid-main">
+          <div class="stack-lg">
+            ${next ? `
+              <section class="next-class" aria-label="${esc(t("st.next"))}">
+                <span class="eyebrow" style="color:#FFB26B">${esc(t("st.next"))}</span>
+                <div class="when">${esc(fmtLongDateTime(next.starts_at))}</div>
+                <div class="muted">${esc(next.title || instName(next.instrument))} · ${next.duration_min} min · ${esc(t("l." + next.format))}${next.teacher ? " · " + esc(next.teacher.full_name) : ""}</div>
+                <div>${next.room_url ? `<a class="btn btn-orange" href="${esc(next.room_url)}">${esc(t("st.join"))}</a>` : `<button class="btn btn-orange" disabled>${esc(t("st.join"))}</button> <span class="small muted" style="margin-left:8px">${esc(t("st.aulaSoon"))}</span>`}</div>
+              </section>` : `<div class="card"><h2 style="margin-bottom:6px">${esc(t("st.next"))}</h2><p class="muted">${esc(t("st.noNext"))}</p></div>`}
+
+            <section class="stack">
+              <h2>${esc(t("st.homework"))}</h2>
+              ${hw.length ? `<div class="list">${hw.map(renderStudentHw).join("")}</div>` : `<div class="empty">${esc(t("st.noHomework"))}</div>`}
+            </section>
+          </div>
+
+          <aside class="stack-lg">
+            <div class="card stack">
+              <h2>${esc(t("st.week"))}</h2>
+              <div class="row2">
+                <div class="stat"><span class="num">${weekMin}</span><span class="muted small">${esc(t("st.minutes"))}</span></div>
+                <div class="stat"><span class="num">${weekDays}<span class="muted" style="font-size:1rem">/7</span></span><span class="muted small">${esc(t("st.days"))}</span></div>
+              </div>
+            </div>
+            <div class="card stack">
+              <h2>${esc(t("st.upcoming"))}</h2>
+              ${lessons.length ? `<div class="list">${lessons.slice(0, 6).map((l) => `
+                <div class="item-head"><div><b>${esc(fmtDateTime(l.starts_at))}</b><div class="small muted">${esc(l.title || instName(l.instrument))} · ${l.duration_min} min</div></div><span class="pill ${l.format === "group" ? "orange" : ""}">${esc(t("l." + l.format))}</span></div>`).join("")}</div>`
+                : `<p class="muted small">${esc(t("l.none"))}</p>`}
+            </div>
+            <div class="card stack">
+              <h2>${esc(t("st.recent"))}</h2>
+              ${practice.length ? `<div class="list">${practice.slice(0, 8).map(renderPracticeRow).join("")}</div>` : `<p class="muted small">${esc(t("st.noPractice"))}</p>`}
+            </div>
+          </aside>
+        </div>
+      </div>`;
+  }
+
+  function renderStudentHw(h) {
+    const done = h.status !== "assigned";
+    return `
+      <article class="item ${done ? "done" : ""}" data-hw="${h.id}">
+        <div class="item-head"><h3>${esc(h.title)}</h3>${hwStatusPill(h)}</div>
+        <div class="item-meta">${hwMeta(h)}</div>
+        ${h.instructions ? `<p style="white-space:pre-wrap">${esc(h.instructions)}</p>` : ""}
+        ${h.teacher_feedback ? `<div class="card" style="padding:12px 14px;background:var(--good-soft);border-color:transparent"><b class="small">${esc(t("hw.feedback"))}:</b> <span style="white-space:pre-wrap">${esc(h.teacher_feedback)}</span></div>` : ""}
+        <div class="item-actions">
+          ${h.score ? `<button class="btn btn-ghost btn-sm" data-action="open-score" data-path="${esc(h.score.file_path)}">♪ ${esc(t("hw.score"))}</button>` : ""}
+          <button class="btn btn-ghost btn-sm" data-action="toggle-log">${esc(t("hw.log"))}</button>
+          ${h.status === "assigned" ? `<button class="btn btn-sm" data-action="hw-done">${esc(t("hw.markDone"))}</button>`
+            : h.status === "done" ? `<button class="btn btn-ghost btn-sm" data-action="hw-undo">${esc(t("hw.undo"))}</button>` : ""}
+        </div>
+        <form class="inline-form" data-log-form hidden>
+          <div class="row2">
+            <div class="field"><label for="m-${h.id}">${esc(t("pl.minutes"))}</label><input id="m-${h.id}" name="minutes" type="number" min="1" max="600" value="20" required></div>
+            <div class="field"><label for="b-${h.id}">${esc(t("pl.bpm"))}</label><input id="b-${h.id}" name="bpm" type="number" min="20" max="300" placeholder="${h.target_bpm || ""}"></div>
+          </div>
+          <div class="field"><label for="n-${h.id}">${esc(t("pl.note"))}</label><input id="n-${h.id}" name="note"></div>
+          <div class="field"><label for="f-${h.id}">${esc(t("pl.file"))}</label><input id="f-${h.id}" name="file" type="file" accept="audio/*,video/*"></div>
+          <button class="btn btn-sm" type="submit" style="justify-self:start">${esc(t("pl.save"))}</button>
+        </form>
+      </article>`;
+  }
+
+  function renderPracticeRow(p) {
+    return `<div class="item-head" style="align-items:center">
+      <div><b>${p.minutes} min</b>${p.bpm_reached ? ` <span class="mono muted">♩=${p.bpm_reached}</span>` : ""}
+        <div class="small muted">${esc(fmtDateTime(p.created_at))}${p.homework ? " · " + esc(p.homework.title) : ""}</div>
+        ${p.note ? `<div class="small">${esc(p.note)}</div>` : ""}</div>
+      ${p.file_path ? `<button class="btn btn-ghost btn-sm" data-action="open-practice" data-path="${esc(p.file_path)}">▶ ${esc(t("pl.listen"))}</button>` : ""}
+    </div>`;
+  }
+
+  /* ================= TEACHER ================= */
+  async function loadTeacherBase() {
+    const [mine, all, scores] = await Promise.all([
+      me.role === "admin"
+        ? q(sb.from("profiles").select("*").eq("role", "student").order("full_name"))
+        : q(sb.from("teacher_students").select("student:profiles!teacher_students_student_id_fkey(*)").eq("teacher_id", me.id)).then((r) => r.map((x) => x.student).filter(Boolean).sort((a, b) => a.full_name.localeCompare(b.full_name))),
+      q(sb.from("profiles").select("id,full_name,email,instrument").eq("role", "student").order("full_name")),
+      q(sb.from("scores").select("*").order("created_at", { ascending: false })),
+    ]);
+    S.students = mine; S.allStudents = all; S.scores = scores;
+  }
+
+  async function selectStudent(id, rerender = true) {
+    S.selected = id;
+    const [hw, pl, notes] = await Promise.all([
+      q(sb.from("homework").select("*, score:scores(title,file_path,kind)").eq("student_id", id).order("created_at", { ascending: false })),
+      q(sb.from("practice_logs").select("*, homework(title)").eq("student_id", id).order("created_at", { ascending: false }).limit(15)),
+      q(sb.from("student_notes").select("*").eq("student_id", id).order("created_at", { ascending: false })),
+    ]);
+    S.detail = { hw, pl, notes };
+    if (rerender) render();
+  }
+
+  async function loadLessons() {
+    let qy = sb.from("lessons").select("*, lesson_students(student_id, student:profiles(full_name))").order("starts_at", { ascending: true });
+    if (me.role !== "admin") qy = qy.eq("teacher_id", me.id);
+    S.lessons = await q(qy);
+  }
+  async function loadUsers() { S.users = await q(sb.from("profiles").select("*").order("created_at", { ascending: false })); }
+
+  function renderTeacher() {
+    const tabs = [["students", "t.students"], ["lessons", "t.lessons"], ["scores", "t.scores"]];
+    if (me.role === "admin") tabs.push(["admin", "t.admin"]);
+    view.innerHTML = `
+      <div class="stack" style="gap:4px;margin-bottom:18px"><h1>${esc(t("hello", { n: (me.full_name || "").split(" ")[0] }))}</h1></div>
+      <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-action="tab" data-tab="${k}" aria-selected="${S.tab === k}">${esc(t(l))}</button>`).join("")}</div>
+      <div id="tabBody"></div>`;
+    const body = $("tabBody");
+    if (S.tab === "students") body.innerHTML = renderStudentsTab();
+    if (S.tab === "lessons") body.innerHTML = renderLessonsTab();
+    if (S.tab === "scores") body.innerHTML = renderScoresTab();
+    if (S.tab === "admin") body.innerHTML = renderAdminTab();
+  }
+
+  function renderStudentsTab() {
+    const mineIds = new Set(S.students.map((s) => s.id));
+    const addable = S.allStudents.filter((s) => !mineIds.has(s.id));
+    const sel = S.students.find((s) => s.id === S.selected);
+    return `
+      <div class="grid-split">
+        <aside class="card stack">
+          <div class="section-title"><h2>${esc(t("t.myStudents"))}</h2><span class="muted small">${S.students.length}</span></div>
+          ${me.role !== "admin" ? `
+            <form class="stack" data-form="add-student" style="gap:8px">
+              <div class="field"><label for="addSel" class="sr">${esc(t("t.add"))}</label>
+                <select id="addSel" name="sid"><option value="">${esc(t("t.addPick"))}</option>${addable.map((s) => `<option value="${s.id}">${esc(s.full_name || s.email)} · ${esc(instName(s.instrument))}</option>`).join("")}</select></div>
+              <button class="btn btn-sm" type="submit">${esc(t("t.add"))}</button>
+            </form>` : ""}
+          <div class="field"><input id="stuSearch" data-i18n-ph="t.search" placeholder="${esc(t("t.search"))}" aria-label="${esc(t("t.search"))}"></div>
+          <div class="list" id="stuList" style="gap:2px">
+            ${S.students.length ? S.students.map((s) => `
+              <button class="person" data-action="pick" data-id="${s.id}" data-name="${esc((s.full_name || "").toLowerCase())}" aria-current="${s.id === S.selected}">
+                <span class="avatar">${esc(initials(s.full_name))}</span>
+                <span style="min-width:0"><b>${esc(s.full_name || s.email)}</b><br><span class="small muted">${esc(instName(s.instrument))} · ${esc(planName(s.plan))}</span></span>
+              </button>`).join("") : `<div class="empty">${esc(t("t.noStudents"))}</div>`}
+          </div>
+        </aside>
+        <section>${sel && S.detail ? renderStudentDetail(sel) : `<div class="empty">${esc(t("t.pickStudent"))}</div>`}</section>
+      </div>`;
+  }
+
+  function renderStudentDetail(s) {
+    const { hw, pl, notes } = S.detail;
+    const scoreOpts = S.scores.map((x) => `<option value="${x.id}">${esc(x.title)}${x.composer ? " — " + esc(x.composer) : ""}</option>`).join("");
+    return `
+      <div class="stack-lg">
+        <div class="card stack">
+          <div class="item-head">
+            <div style="display:flex;gap:14px;align-items:center"><span class="avatar" style="width:52px;height:52px;font-size:1.05rem">${esc(initials(s.full_name))}</span>
+              <div><h2>${esc(s.full_name)}</h2><div class="item-meta" style="margin-top:4px"><span class="pill">${esc(instName(s.instrument))}</span><span>${esc(levelName(s.level))}</span></div></div></div>
+            ${me.role !== "admin" ? `<button class="btn btn-danger btn-sm" data-action="remove-student" data-id="${s.id}">${esc(t("t.remove"))}</button>` : ""}
+          </div>
+          <div class="item-meta">
+            <span><b>${esc(t("t.contact"))}:</b> ${esc(s.email || "—")}${s.phone ? " · " + esc(s.phone) : ""}</span>
+            ${s.guardian_name ? `<span><b>${esc(t("t.guardian"))}:</b> ${esc(s.guardian_name)}</span>` : ""}
+          </div>
+          ${me.role === "admin" ? `
+            <form class="item-actions" data-form="plan" data-id="${s.id}" style="align-items:end">
+              <div class="field" style="min-width:200px"><label for="planSel">${esc(t("f.plan"))}</label>
+                <select id="planSel" name="plan"><option value="">—</option>${C.plans.map((p) => `<option value="${p.id}" ${p.id === s.plan ? "selected" : ""}>${esc(p[K.lang])}</option>`).join("")}</select></div>
+              <button class="btn btn-ghost btn-sm" type="submit">${esc(t("t.savePlan"))}</button>
+            </form>` : `<div class="small muted">${esc(t("f.plan"))}: ${esc(planName(s.plan))}</div>`}
+        </div>
+
+        <form class="card stack" data-form="assign" data-id="${s.id}">
+          <h2>${esc(t("t.assign"))}</h2>
+          <div class="field"><label for="hwTitle">${esc(t("t.hwTitle"))}</label><input id="hwTitle" name="title" required placeholder="Escala de Sol mayor, 2 octavas"></div>
+          <div class="field"><label for="hwInstr">${esc(t("t.hwInstr"))}</label><textarea id="hwInstr" name="instructions" placeholder="Metrónomo a 60, sube 4 BPM cada día sin errores."></textarea></div>
+          <div class="row3">
+            <div class="field"><label for="hwBpm">${esc(t("t.hwBpm"))}</label><input id="hwBpm" name="bpm" type="number" min="20" max="300" placeholder="80"></div>
+            <div class="field"><label for="hwDue">${esc(t("t.hwDue"))}</label><input id="hwDue" name="due" type="date"></div>
+            <div class="field"><label for="hwScore">${esc(t("t.hwScore"))}</label><select id="hwScore" name="score"><option value="">${esc(t("t.none"))}</option>${scoreOpts}</select></div>
+          </div>
+          <button class="btn" type="submit" style="justify-self:start">${esc(t("t.assignBtn"))}</button>
+        </form>
+
+        <section class="stack">
+          <h2>${esc(t("t.hwList"))}</h2>
+          ${hw.length ? `<div class="list">${hw.map((h) => `
+            <article class="item" data-hw="${h.id}">
+              <div class="item-head"><h3>${esc(h.title)}</h3>${hwStatusPill(h)}</div>
+              <div class="item-meta">${hwMeta(h)}${h.score ? `<span>♪ ${esc(h.score.title)}</span>` : ""}</div>
+              ${h.instructions ? `<p class="small" style="white-space:pre-wrap">${esc(h.instructions)}</p>` : ""}
+              <form class="inline-form" data-form="review">
+                <div class="field"><label for="fb-${h.id}">${esc(t("t.feedback"))}</label><textarea id="fb-${h.id}" name="feedback" style="min-height:60px">${esc(h.teacher_feedback || "")}</textarea></div>
+                <div class="item-actions">
+                  <button class="btn btn-sm" type="submit">${esc(t("t.review"))}</button>
+                  <button class="btn btn-danger btn-sm" type="button" data-action="hw-delete">${esc(t("t.delete"))}</button>
+                </div>
+              </form>
+            </article>`).join("")}</div>` : `<div class="empty">${esc(t("st.noHomework"))}</div>`}
+        </section>
+
+        <div class="grid-main" style="grid-template-columns:1fr 1fr">
+          <section class="card stack">
+            <h2>${esc(t("t.practice"))}</h2>
+            ${pl.length ? `<div class="list">${pl.map(renderPracticeRow).join("")}</div>` : `<p class="muted small">—</p>`}
+          </section>
+          <section class="card stack">
+            <h2>${esc(t("t.notes"))}</h2>
+            <form class="stack" data-form="note" data-id="${s.id}" style="gap:8px">
+              <div class="field"><textarea name="body" placeholder="${esc(t("t.notePh"))}" aria-label="${esc(t("t.notes"))}" style="min-height:64px"></textarea></div>
+              <button class="btn btn-ghost btn-sm" type="submit" style="justify-self:start">${esc(t("t.addNote"))}</button>
+            </form>
+            ${notes.map((n) => `<div class="small"><span class="muted mono">${esc(fmtDateTime(n.created_at))}</span><div style="white-space:pre-wrap">${esc(n.body)}</div></div>`).join("")}
+          </section>
+        </div>
+      </div>`;
+  }
+
+  function renderLessonsTab() {
+    const now = Date.now();
+    const upcoming = S.lessons.filter((l) => new Date(l.starts_at).getTime() + l.duration_min * 60000 >= now);
+    const past = S.lessons.filter((l) => new Date(l.starts_at).getTime() + l.duration_min * 60000 < now).reverse().slice(0, 20);
+    const row = (l) => `
+      <article class="item" data-lesson="${l.id}">
+        <div class="item-head"><div><h3>${esc(fmtDateTime(l.starts_at))}</h3><div class="small muted">${esc(l.title || instName(l.instrument))} · ${l.duration_min} min</div></div>
+          <span class="pill ${l.status === "cancelled" ? "bad" : l.status === "done" ? "good" : l.format === "group" ? "orange" : ""}">${esc(l.status === "cancelled" ? t("l.cancelled") : l.status === "done" ? t("l.done") : t("l." + l.format))}</span></div>
+        <div class="item-meta">${(l.lesson_students || []).map((x) => `<span>${esc(x.student ? x.student.full_name : "?")}</span>`).join("")}</div>
+        ${l.status === "scheduled" ? `<div class="item-actions"><button class="btn btn-ghost btn-sm" data-action="lesson-done">${esc(t("l.done"))}</button><button class="btn btn-danger btn-sm" data-action="lesson-cancel">${esc(t("l.cancel"))}</button></div>` : ""}
+      </article>`;
+    const d = new Date(Date.now() + 86400000); d.setMinutes(0, 0, 0); d.setHours(17);
+    const pad = (n) => String(n).padStart(2, "0");
+    const defWhen = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T17:00`;
+    return `
+      <div class="grid-main">
+        <div class="stack-lg">
+          <section class="stack"><h2>${esc(t("l.upcoming"))}</h2>${upcoming.length ? `<div class="list">${upcoming.map(row).join("")}</div>` : `<div class="empty">${esc(t("l.none"))}</div>`}</section>
+          ${past.length ? `<section class="stack"><h2>${esc(t("l.past"))}</h2><div class="list">${past.map(row).join("")}</div></section>` : ""}
+        </div>
+        <form class="card stack" data-form="lesson">
+          <h2>${esc(t("l.new"))}</h2>
+          <div class="field"><label for="lTitle">${esc(t("l.title"))}</label><input id="lTitle" name="title" placeholder="Guitarra · Nivel 1"></div>
+          <div class="row2">
+            <div class="field"><label for="lInst">${esc(t("f.instrument"))}</label><select id="lInst" name="instrument">${C.instruments.map((i) => `<option value="${i.id}">${esc(i[K.lang])}</option>`).join("")}</select></div>
+            <div class="field"><label for="lFormat">${esc(t("l.format"))}</label><select id="lFormat" name="format"><option value="private">${esc(t("l.private"))}</option><option value="group">${esc(t("l.group"))}</option><option value="trial">${esc(t("l.trial"))}</option></select></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="lWhen">${esc(t("l.when"))}</label><input id="lWhen" name="when" type="datetime-local" value="${defWhen}" required></div>
+            <div class="field"><label for="lDur">${esc(t("l.duration"))}</label><select id="lDur" name="duration"><option>30</option><option>45</option><option selected>60</option></select></div>
+          </div>
+          <fieldset class="field" style="border:0;padding:0;margin:0"><legend class="lbl" style="margin-bottom:6px">${esc(t("l.students"))}</legend>
+            ${S.students.length ? S.students.map((s) => `<label class="check"><input type="checkbox" name="students" value="${s.id}"> ${esc(s.full_name)} <span class="muted small">· ${esc(instName(s.instrument))}</span></label>`).join("") : `<p class="muted small">${esc(t("t.noStudents"))}</p>`}
+          </fieldset>
+          <button class="btn" type="submit" style="justify-self:start">${esc(t("l.save"))}</button>
+        </form>
+      </div>`;
+  }
+
+  function renderScoresTab() {
+    const kindLabel = { pdf: "PDF", gp: "Guitar Pro", musicxml: "MusicXML", other: "File" };
+    return `
+      <div class="grid-main">
+        <section class="stack">
+          <h2>${esc(t("t.scores"))}</h2>
+          ${S.scores.length ? `<div class="list">${S.scores.map((s) => `
+            <article class="item" data-score="${s.id}" data-path="${esc(s.file_path)}">
+              <div class="item-head"><div><h3>${esc(s.title)}</h3><div class="small muted">${esc(s.composer || "")}${s.instrument ? (s.composer ? " · " : "") + esc(instName(s.instrument)) : ""}</div></div><span class="pill gray">${kindLabel[s.kind] || s.kind}</span></div>
+              <div class="item-actions"><button class="btn btn-ghost btn-sm" data-action="open-score" data-path="${esc(s.file_path)}">${esc(t("s.open"))}</button>
+              ${s.owner_id === me.id || me.role === "admin" ? `<button class="btn btn-danger btn-sm" data-action="score-delete">${esc(t("t.delete"))}</button>` : ""}</div>
+            </article>`).join("")}</div>` : `<div class="empty">${esc(t("s.none"))}</div>`}
+        </section>
+        <form class="card stack" data-form="score">
+          <h2>${esc(t("s.upload"))}</h2>
+          <div class="field"><label for="sTitle">${esc(t("s.title"))}</label><input id="sTitle" name="title" required placeholder="Minueto en Sol"></div>
+          <div class="row2">
+            <div class="field"><label for="sComp">${esc(t("s.composer"))}</label><input id="sComp" name="composer" placeholder="J. S. Bach"></div>
+            <div class="field"><label for="sInst">${esc(t("f.instrument"))}</label><select id="sInst" name="instrument">${C.instruments.map((i) => `<option value="${i.id}">${esc(i[K.lang])}</option>`).join("")}</select></div>
+          </div>
+          <div class="field"><label for="sFile">${esc(t("s.file"))}</label><input id="sFile" name="file" type="file" required accept=".pdf,.gp,.gp3,.gp4,.gp5,.gpx,.xml,.musicxml,.mxl"></div>
+          <button class="btn" type="submit" style="justify-self:start">${esc(t("s.uploadBtn"))}</button>
+        </form>
+      </div>`;
+  }
+
+  function renderAdminTab() {
+    return `
+      <section class="card stack">
+        <div class="section-title"><h2>${esc(t("a.users"))}</h2><span class="muted small">${S.users.length}</span></div>
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>${esc(t("f.name"))}</th><th>${esc(t("f.email"))}</th><th>${esc(t("f.instrument"))}</th><th>${esc(t("a.role"))}</th></tr></thead>
+          <tbody>${S.users.map((u) => `<tr>
+            <td><b>${esc(u.full_name || "—")}</b></td><td class="small">${esc(u.email || "")}</td><td class="small">${esc(instName(u.instrument))}</td>
+            <td><select data-action="set-role" data-id="${u.id}" aria-label="${esc(t("a.role"))}" ${u.id === me.id ? "disabled" : ""} style="font:inherit;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)">
+              ${["student", "teacher", "admin"].map((r) => `<option value="${r}" ${u.role === r ? "selected" : ""}>${esc(t("role." + r))}</option>`).join("")}</select></td>
+          </tr>`).join("")}</tbody>
+        </table></div>
+      </section>`;
+  }
+
+  /* ================= EVENTS ================= */
+  view.addEventListener("input", (e) => {
+    if (e.target.id !== "stuSearch") return;
+    const qv = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#stuList .person").forEach((b) => (b.hidden = qv && !b.dataset.name.includes(qv)));
+  });
+
+  view.addEventListener("change", async (e) => {
+    const el = e.target.closest("[data-action='set-role']"); if (!el) return;
+    try { await q(sb.from("profiles").update({ role: el.value }).eq("id", el.dataset.id)); toast(t("a.saved")); await loadUsers(); }
+    catch (err) { fail(err); }
+  });
+
+  view.addEventListener("click", async (e) => {
+    const el = e.target.closest("[data-action]"); if (!el || el.tagName === "SELECT") return;
+    const a = el.dataset.action;
+    const hwEl = el.closest("[data-hw]"), hwId = hwEl && hwEl.dataset.hw;
+    try {
+      if (a === "tab") {
+        S.tab = el.dataset.tab;
+        if (S.tab === "lessons") await loadLessons();
+        if (S.tab === "admin") await loadUsers();
+        render();
+      } else if (a === "pick") {
+        await selectStudent(el.dataset.id);
+      } else if (a === "open-score" || a === "open-practice") {
+        const win = window.open("", "_blank");
+        const url = await signedUrl(a === "open-score" ? "scores" : "practice", el.dataset.path);
+        if (win) win.location = url; else location.href = url;
+      } else if (a === "toggle-log") {
+        const f = hwEl.querySelector("[data-log-form]"); f.hidden = !f.hidden; if (!f.hidden) f.querySelector("input").focus();
+      } else if (a === "hw-done" || a === "hw-undo") {
+        const done = a === "hw-done";
+        await q(sb.from("homework").update({ status: done ? "done" : "assigned", completed_at: done ? new Date().toISOString() : null }).eq("id", hwId));
+        await loadStudent(); render();
+      } else if (a === "hw-delete") {
+        if (el.dataset.confirm !== "1") { el.dataset.confirm = "1"; el.textContent = t("confirm"); return; }
+        await q(sb.from("homework").delete().eq("id", hwId)); await selectStudent(S.selected);
+      } else if (a === "remove-student") {
+        if (el.dataset.confirm !== "1") { el.dataset.confirm = "1"; el.textContent = t("confirm"); return; }
+        await q(sb.from("teacher_students").delete().eq("teacher_id", me.id).eq("student_id", el.dataset.id));
+        S.selected = null; S.detail = null; await loadTeacherBase(); render();
+      } else if (a === "lesson-done" || a === "lesson-cancel") {
+        const id = el.closest("[data-lesson]").dataset.lesson;
+        if (a === "lesson-cancel" && el.dataset.confirm !== "1") { el.dataset.confirm = "1"; el.textContent = t("confirm"); return; }
+        await q(sb.from("lessons").update({ status: a === "lesson-done" ? "done" : "cancelled" }).eq("id", id));
+        await loadLessons(); render();
+      } else if (a === "score-delete") {
+        if (el.dataset.confirm !== "1") { el.dataset.confirm = "1"; el.textContent = t("confirm"); return; }
+        const card = el.closest("[data-score]");
+        await q(sb.from("scores").delete().eq("id", card.dataset.score));
+        await sb.storage.from("scores").remove([card.dataset.path]);
+        S.scores = S.scores.filter((s) => s.id !== card.dataset.score); render();
+      }
+    } catch (err) { fail(err); }
+  });
+
+  view.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target, fd = new FormData(f);
+    const btn = f.querySelector("button[type=submit]"); if (btn) btn.disabled = true;
+    try {
+      if (f.matches("[data-log-form]")) {
+        const hwId = f.closest("[data-hw]").dataset.hw;
+        const file = fd.get("file");
+        let file_path = null;
+        if (file && file.size) {
+          file_path = `${me.id}/${Date.now()}-${safeName(file.name)}`;
+          const { error } = await sb.storage.from("practice").upload(file_path, file, { contentType: file.type || undefined });
+          if (error) throw error;
+        }
+        await q(sb.from("practice_logs").insert({ student_id: me.id, homework_id: hwId, minutes: +fd.get("minutes"),
+          bpm_reached: fd.get("bpm") ? +fd.get("bpm") : null, note: fd.get("note") || null, file_path }));
+        toast(t("pl.saved")); await loadStudent(); render();
+      } else if (f.dataset.form === "add-student") {
+        const sid = fd.get("sid"); if (!sid) return;
+        await q(sb.from("teacher_students").insert({ teacher_id: me.id, student_id: sid }));
+        await loadTeacherBase(); await selectStudent(sid);
+      } else if (f.dataset.form === "assign") {
+        const title = String(fd.get("title") || "").trim(); if (!title) return toast(t("err.required"), true);
+        await q(sb.from("homework").insert({ teacher_id: me.id, student_id: f.dataset.id, title,
+          instructions: fd.get("instructions") || null, target_bpm: fd.get("bpm") ? +fd.get("bpm") : null,
+          due_date: fd.get("due") || null, score_id: fd.get("score") || null }));
+        toast(t("t.assigned")); await selectStudent(f.dataset.id);
+      } else if (f.dataset.form === "review") {
+        const hwId = f.closest("[data-hw]").dataset.hw;
+        await q(sb.from("homework").update({ status: "reviewed", teacher_feedback: fd.get("feedback") || null }).eq("id", hwId));
+        toast(t("saved")); await selectStudent(S.selected);
+      } else if (f.dataset.form === "note") {
+        const body = String(fd.get("body") || "").trim(); if (!body) return;
+        await q(sb.from("student_notes").insert({ student_id: f.dataset.id, teacher_id: me.id, body }));
+        await selectStudent(f.dataset.id);
+      } else if (f.dataset.form === "plan") {
+        await q(sb.from("profiles").update({ plan: fd.get("plan") || null }).eq("id", f.dataset.id));
+        toast(t("saved")); await loadTeacherBase(); render();
+      } else if (f.dataset.form === "lesson") {
+        const students = fd.getAll("students"); if (!students.length) return toast(t("l.pickStudents"), true);
+        const lesson = await q(sb.from("lessons").insert({ teacher_id: me.id, title: fd.get("title") || "", instrument: fd.get("instrument"),
+          format: fd.get("format"), starts_at: new Date(fd.get("when")).toISOString(), duration_min: +fd.get("duration") }).select().single());
+        await q(sb.from("lesson_students").insert(students.map((sid) => ({ lesson_id: lesson.id, student_id: sid }))));
+        toast(t("l.saved")); await loadLessons(); render();
+      } else if (f.dataset.form === "score") {
+        const file = fd.get("file"), title = String(fd.get("title") || "").trim();
+        if (!file || !file.size || !title) return toast(t("err.required"), true);
+        const file_path = `${me.id}/${Date.now()}-${safeName(file.name)}`;
+        const { error } = await sb.storage.from("scores").upload(file_path, file, { contentType: file.type || undefined });
+        if (error) throw error;
+        const row = await q(sb.from("scores").insert({ owner_id: me.id, title, composer: fd.get("composer") || null,
+          instrument: fd.get("instrument"), kind: scoreKind(file.name), file_path }).select().single());
+        S.scores.unshift(row); toast(t("s.uploaded")); render();
+      }
+    } catch (err) { fail(err); }
+    finally { if (btn && document.body.contains(btn)) btn.disabled = false; }
+  });
+
+  boot().catch(fail);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entrar · Compás</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="app.css">
+<style>
+  .auth { min-height: calc(100vh - 64px); display: grid; grid-template-columns: 1fr 1fr; }
+  .auth-art { background: #0F1F3A url("images/guitar.webp") center/cover no-repeat; position: relative; }
+  .auth-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(15,31,58,.35), rgba(15,31,58,.85)); }
+  .auth-art .quote { position: absolute; left: 40px; right: 40px; bottom: 40px; z-index: 1; color: #fff; display: grid; gap: 10px; }
+  .auth-art .quote b { font: 800 clamp(1.6rem, 3vw, 2.2rem)/1.1 var(--f-display); letter-spacing: -0.02em; }
+  .auth-art .quote span { color: #C9D6EA; }
+  .auth-panel { display: grid; place-items: center; padding-block: 40px; padding-inline: 20px; }
+  .auth-box { width: 100%; max-width: 440px; display: grid; gap: 20px; }
+  .auth-box .tabs { margin-bottom: 0; }
+  @media (max-width: 860px) { .auth { grid-template-columns: 1fr; } .auth-art { display: none; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="logo" href="index.html"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 18V6l10-2v12" stroke="#FFB26B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="#FFB26B"/><circle cx="16.5" cy="16" r="2.6" fill="#FFB26B"/></svg></span><span class="brand-name">Compás</span></a>
+    <div class="right">
+      <div class="seg" role="group" aria-label="Idioma / Language"><button type="button" data-lang="es">ES</button><button type="button" data-lang="en">EN</button></div>
+      <a class="btn btn-ghost btn-sm" href="index.html" data-i18n="nav.home">Inicio</a>
+    </div>
+  </div>
+</header>
+
+<main class="auth">
+  <div class="auth-art" aria-hidden="true">
+    <div class="quote"><b data-i18n="login.sub">Tus clases, tareas y práctica en un solo lugar.</b></div>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-box">
+      <div class="stack" style="gap:6px">
+        <span class="eyebrow brand-name">Compás</span>
+        <h1 data-i18n="login.title">Entra a tu cuenta</h1>
+      </div>
+
+      <div class="tabs" role="tablist" id="authTabs">
+        <button type="button" role="tab" data-tab="in" aria-selected="true" data-i18n="login.tabIn">Iniciar sesión</button>
+        <button type="button" role="tab" data-tab="up" aria-selected="false" data-i18n="login.tabUp">Crear cuenta</button>
+      </div>
+
+      <!-- Sign in -->
+      <form id="fIn" class="stack" novalidate>
+        <div class="field"><label for="in-email" data-i18n="f.email">Correo</label><input id="in-email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="in-pass" data-i18n="f.password">Contraseña</label><input id="in-pass" type="password" autocomplete="current-password" required></div>
+        <span class="err" id="in-err" hidden></span>
+        <button class="btn btn-block" type="submit" data-i18n="login.in">Entrar</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="toForgot" style="justify-self:start" data-i18n="login.forgot">¿Olvidaste tu contraseña?</button>
+      </form>
+
+      <!-- Sign up -->
+      <form id="fUp" class="stack" novalidate hidden>
+        <div class="field"><label for="up-name" data-i18n="f.name">Nombre del alumno</label><input id="up-name" autocomplete="name" required></div>
+        <div class="row2">
+          <div class="field"><label for="up-email" data-i18n="f.email">Correo</label><input id="up-email" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="up-phone" data-i18n="f.phone">WhatsApp</label><input id="up-phone" type="tel" autocomplete="tel" placeholder="+52 669 123 4567"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="up-inst" data-i18n="f.instrument">Instrumento</label><select id="up-inst"></select></div>
+          <div class="field"><label for="up-level" data-i18n="f.level">Nivel</label>
+            <select id="up-level"><option value="0" data-i18n="lvl.0"></option><option value="1" data-i18n="lvl.1"></option><option value="2" data-i18n="lvl.2"></option><option value="3" data-i18n="lvl.3"></option></select></div>
+        </div>
+        <div class="field"><label for="up-pass" data-i18n="f.password">Contraseña</label><input id="up-pass" type="password" autocomplete="new-password" minlength="8" required><span class="muted small" data-i18n="login.minPass">Mínimo 8 caracteres.</span></div>
+        <label class="check"><input type="checkbox" id="up-minor"> <span data-i18n="f.minor">El alumno es menor de edad</span></label>
+        <div class="field" id="up-guardian-wrap" hidden><label for="up-guardian" data-i18n="f.guardian">Nombre del padre, madre o tutor</label><input id="up-guardian"></div>
+        <span class="err" id="up-err" hidden></span>
+        <button class="btn btn-block" type="submit" data-i18n="login.up">Crear cuenta</button>
+      </form>
+
+      <!-- Forgot password -->
+      <form id="fForgot" class="stack" novalidate hidden>
+        <div class="field"><label for="fg-email" data-i18n="f.email">Correo</label><input id="fg-email" type="email" autocomplete="email" required></div>
+        <button class="btn btn-block" type="submit" data-i18n="login.reset">Enviar enlace</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-back style="justify-self:start" data-i18n="login.back">Volver</button>
+      </form>
+
+      <!-- New password (after clicking the email link) -->
+      <form id="fNewPass" class="stack" novalidate hidden>
+        <h2 data-i18n="login.newPass">Escribe tu nueva contraseña</h2>
+        <div class="field"><label for="np-pass" data-i18n="f.password2">Nueva contraseña</label><input id="np-pass" type="password" autocomplete="new-password" minlength="8" required></div>
+        <button class="btn btn-block" type="submit" data-i18n="login.savePass">Guardar contraseña</button>
+      </form>
+
+      <div id="msg" class="card" hidden></div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  const { sb, t, C, applyStatic, bindLang, fail } = window.Compas;
+  const $ = (id) => document.getElementById(id);
+  const forms = ["fIn", "fUp", "fForgot", "fNewPass"];
+  function show(id) { forms.forEach((f) => ($(f).hidden = f !== id)); $("authTabs").hidden = !(id === "fIn" || id === "fUp"); $("msg").hidden = true; }
+  function message(text) { forms.forEach((f) => ($(f).hidden = true)); $("authTabs").hidden = true; $("msg").textContent = text; $("msg").hidden = false; }
+  function fillInstruments() {
+    const v = $("up-inst").value;
+    $("up-inst").innerHTML = C.instruments.map((i) => `<option value="${i.id}">${i[window.Compas.lang]}</option>`).join("");
+    if (v) $("up-inst").value = v;
+  }
+  applyStatic(); fillInstruments(); bindLang(fillInstruments);
+
+  document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    show(b.dataset.tab === "in" ? "fIn" : "fUp");
+  }));
+  $("toForgot").addEventListener("click", () => { $("fg-email").value = $("in-email").value; show("fForgot"); });
+  document.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", () => show("fIn")));
+  $("up-minor").addEventListener("change", (e) => ($("up-guardian-wrap").hidden = !e.target.checked));
+
+  // Already signed in → go to dashboard (unless arriving from a password-reset link)
+  let recovering = /type=recovery/.test(location.hash);
+  sb.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") { recovering = true; show("fNewPass"); }
+  });
+  sb.auth.getSession().then(({ data }) => { if (data.session && !recovering) location.replace("app.html"); });
+
+  $("fIn").addEventListener("submit", async (e) => {
+    e.preventDefault(); $("in-err").hidden = true;
+    const email = $("in-email").value.trim(), password = $("in-pass").value;
+    if (!email || !password) { $("in-err").textContent = t("err.required"); $("in-err").hidden = false; return; }
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { $("in-err").textContent = /invalid/i.test(error.message) ? t("err.badLogin") : error.message; $("in-err").hidden = false; return; }
+    location.replace("app.html");
+  });
+
+  $("fUp").addEventListener("submit", async (e) => {
+    e.preventDefault(); $("up-err").hidden = true;
+    const full_name = $("up-name").value.trim(), email = $("up-email").value.trim(), password = $("up-pass").value;
+    const minor = $("up-minor").checked, guardian_name = $("up-guardian").value.trim();
+    if (!full_name || !email || password.length < 8 || (minor && !guardian_name)) { $("up-err").textContent = t("err.required") + " " + t("login.minPass"); $("up-err").hidden = false; return; }
+    const { data, error } = await sb.auth.signUp({
+      email, password,
+      options: {
+        emailRedirectTo: C.siteUrl + "app.html",
+        data: { full_name, phone: $("up-phone").value.trim(), instrument: $("up-inst").value, level: $("up-level").value,
+                guardian_name: minor ? guardian_name : null, lang: window.Compas.lang },
+      },
+    });
+    if (error) { $("up-err").textContent = error.message; $("up-err").hidden = false; return; }
+    if (data.session) location.replace("app.html"); else message(t("login.checkEmail"));
+  });
+
+  $("fForgot").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("fg-email").value.trim(); if (!email) return;
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: C.siteUrl + "entrar.html" });
+    if (error) return fail(error);
+    message(t("login.resetSent"));
+  });
+
+  $("fNewPass").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const password = $("np-pass").value; if (password.length < 8) return window.Compas.toast(t("login.minPass"), true);
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) return fail(error);
+    window.Compas.toast(t("login.passSaved")); setTimeout(() => location.replace("app.html"), 900);
+  });
+})();
+</script>
+</body>
+</html>
