@@ -158,6 +158,28 @@ header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
 
 @media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
 
+/* Hero with background video (CONFIG.heroVideoBg) */
+.hero-bg, .hero-shade { display: none; }
+body.hero-video .hero { background: #0F1F3A; }
+body.hero-video .hero-bg { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 40%; z-index: -2; }
+body.hero-video .hero-shade { display: block; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, rgba(11,20,36,.92) 0%, rgba(11,20,36,.78) 45%, rgba(11,20,36,.45) 100%), linear-gradient(0deg, rgba(11,20,36,.55), transparent 40%); }
+body.hero-video .hero-staff { display: none; }
+body.hero-video .hero h1 { color: #FFFFFF; }
+body.hero-video .hero h1 em { color: #FFB26B; }
+body.hero-video .hero .eyebrow { color: #FFB26B; }
+body.hero-video .hero .lede { color: #C9D6EA; }
+body.hero-video .hero .lede b { color: #FFFFFF; }
+body.hero-video .hero .btn-ghost { color: #FFFFFF; border-color: rgba(255,255,255,.45); }
+body.hero-video .hero .btn-ghost:hover { border-color: #FFFFFF; }
+body.hero-video .hero .launch { color: #C9D6EA; }
+body.hero-video .hero .launch b { color: #FFFFFF; }
+body.hero-video .hero-copy .pill.teal { background: rgba(255,178,107,.18); color: #FFB26B; }
+body.hero-video .video-band { display: none; }
+body.hero-video .video-band + section { padding-top: clamp(48px, 7vw, 80px) !important; }
+.hero-toggle { right: 20px; bottom: 20px; }
+@media (max-width: 880px) { body.hero-video .hero-shade { background: linear-gradient(180deg, rgba(11,20,36,.88) 0%, rgba(11,20,36,.7) 60%, rgba(11,20,36,.85) 100%); } }
+
 /* Video band */
 .video-band { padding-block: 0 clamp(40px, 6vw, 72px); }
 .video-frame { position: relative; aspect-ratio: 2 / 1; max-width: 100%; border-radius: 22px; overflow: hidden; background: #0F1F3A url("images/guitar.webp") center/cover no-repeat; box-shadow: var(--shadow); }
@@ -332,6 +354,12 @@ footer { border-top: 1px solid var(--line); padding-block: 32px; color: var(--in
 <main id="top">
   <!-- HERO -->
   <section class="hero">
+    <video class="hero-bg" id="heroBgVideo" muted loop playsinline preload="none" poster="videos/estudiantes-poster.webp" aria-hidden="true" hidden>
+      <source src="videos/estudiantes.webm" type="video/webm">
+      <source src="videos/estudiantes.mp4" type="video/mp4">
+    </video>
+    <div class="hero-shade" aria-hidden="true"></div>
+    <button class="video-toggle hero-toggle" id="heroBgToggle" type="button" aria-label="Pausar video" hidden></button>
     <svg class="hero-staff" viewBox="0 0 1440 520" preserveAspectRatio="none" aria-hidden="true">
       <g id="staff"></g>
     </svg>
@@ -377,7 +405,7 @@ footer { border-top: 1px solid var(--line); padding-block: 32px; color: var(--in
   <section class="video-band" aria-label="Video">
     <div class="wrap">
       <div class="video-frame" id="videoFrame">
-        <video id="heroVideo" muted loop playsinline preload="auto" poster="videos/estudiantes-poster.webp" aria-hidden="true">
+        <video id="heroVideo" muted loop playsinline preload="none" poster="videos/estudiantes-poster.webp" aria-hidden="true">
           <source src="videos/estudiantes.webm" type="video/webm">
           <source src="videos/estudiantes.mp4" type="video/mp4">
         </video>
@@ -642,6 +670,8 @@ const CONFIG = {
   web3formsKey: "",
   slotTimes: ["16:00", "17:00", "18:00", "19:00", "20:00"], // teacher local time
   teacherTz: "America/Mazatlan",
+  // true = the video plays behind the top section (hero). false = the video sits in its own band below.
+  heroVideoBg: true,
 };
 // Launch prices. usd/mxn are monthly; classes = classes per month.
 const PLANS = [
@@ -1072,30 +1102,37 @@ document.getElementById("bpmUp").addEventListener("click", () => setBpm(metro.bp
 })();
 
 /* ============ VIDEO ============ */
-(function setupVideo() {
-  const v = document.getElementById("heroVideo"), btn = document.getElementById("videoToggle"), ph = document.getElementById("videoPlaceholder");
+const PAUSE_ICON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>';
+const PLAY_ICON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
+function setupVideo(v, btn, onMissing) {
   if (!v) return;
   const src = v.querySelector("source:last-of-type");
-  const noVideo = () => { v.hidden = true; ph.hidden = false; btn.hidden = true; };
-  src.addEventListener("error", noVideo);
-  v.addEventListener("error", noVideo);
-  if (v.networkState === 3 /* NETWORK_NO_SOURCE */ || v.error) noVideo();
+  const missing = () => { v.hidden = true; btn.hidden = true; onMissing && onMissing(); };
+  src.addEventListener("error", missing);
+  v.addEventListener("error", missing);
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const setIcon = () => { btn.innerHTML = v.paused ? PLAY_ICON : PAUSE_ICON; btn.setAttribute("aria-label", v.paused ? "Reproducir video" : "Pausar video"); };
   let ready = false;
-  const onReady = () => {
-    if (ready) return; ready = true;
-    btn.hidden = false;
-    if (!reduce) v.play().catch(() => {});
-    setIcon();
-  };
+  const onReady = () => { if (ready) return; ready = true; btn.hidden = false; if (!reduce) v.play().catch(() => {}); setIcon(); };
   v.addEventListener("loadeddata", onReady);
-  const PAUSE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>';
-  const PLAY = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
-  function setIcon() { btn.innerHTML = v.paused ? PLAY : PAUSE; btn.setAttribute("aria-label", v.paused ? "Reproducir video" : "Pausar video"); }
   btn.addEventListener("click", () => { v.paused ? v.play() : v.pause(); });
   v.addEventListener("play", setIcon); v.addEventListener("pause", setIcon);
-  if (v.readyState >= 2) onReady();
-})();
+  if (v.networkState === 3 /* NETWORK_NO_SOURCE */ || v.error) missing();
+  else if (v.readyState >= 2) onReady();
+}
+if (CONFIG.heroVideoBg) {
+  document.body.classList.add("hero-video");
+  const bg = document.getElementById("heroBgVideo");
+  bg.hidden = false; bg.preload = "auto";
+  document.getElementById("heroVideo").preload = "none";
+  setupVideo(bg, document.getElementById("heroBgToggle"), () => document.body.classList.remove("hero-video"));
+  bg.load();
+} else {
+  document.getElementById("heroBgVideo").remove();
+  const band = document.getElementById("heroVideo"); band.preload = "auto"; band.load();
+  setupVideo(band, document.getElementById("videoToggle"),
+    () => (document.getElementById("videoPlaceholder").hidden = false));
+}
 
 /* ============ INIT ============ */
 document.getElementById("year").textContent = new Date().getFullYear();
