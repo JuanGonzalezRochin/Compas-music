@@ -63,6 +63,8 @@ Supabase Realtime (already set up) only introduces the browsers to each other; v
 - Best for private lessons and small groups (up to 4–5 people).
 - About 1 in 10 people on very strict networks (company/school/some mobile data) may not connect. They can switch to home Wi-Fi, or you can add a relay (TURN) server later in `config.js` → `turnServers`.
 
+**Instrumento tab (virtual instruments):** piano (2 octaves, octave shift, computer-keyboard keys) and guitar fretboard (plucked-string sound), plus a chord/scale visualizer (chord shapes with finger numbers, scales across the neck, highlighted piano keys). When the teacher has "Mostrar a la clase" on, the notes they play and the chord/scale they pick show up live for students.
+
 **Backup: Daily.co.** Set `videoMode: "daily"` in `config.js` to switch. That needs the `daily-room` function (`supabase/functions/daily-room/index.ts`, secret `DAILY_API_KEY`, "Verify JWT" off) and a card on your Daily account.
 
 ### Test a class
