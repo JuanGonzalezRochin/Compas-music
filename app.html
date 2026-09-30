@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="app.css?v=5">
+<link rel="stylesheet" href="app.css?v=7">
 </head>
 <body>
 <header class="topbar">
@@ -27,8 +27,8 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
-<script src="config.js?v=5"></script>
-<script src="common.js?v=5"></script>
+<script src="config.js?v=7"></script>
+<script src="common.js?v=7"></script>
 <script>
 (function () {
   const K = window.Compas;
@@ -346,7 +346,7 @@
         <div class="item-head"><div><h3>${esc(fmtDateTime(l.starts_at))}</h3><div class="small muted">${esc(l.title || instName(l.instrument))} · ${l.duration_min} min</div></div>
           <span class="pill ${l.status === "cancelled" ? "bad" : l.status === "done" ? "good" : l.format === "group" ? "orange" : ""}">${esc(l.status === "cancelled" ? t("l.cancelled") : l.status === "done" ? t("l.done") : t("l." + l.format))}</span></div>
         <div class="item-meta">${(l.lesson_students || []).map((x) => `<span>${esc(x.student ? x.student.full_name : "?")}</span>`).join("")}</div>
-        ${l.status === "scheduled" ? `<div class="item-actions"><a class="btn btn-sm" href="aula.html?lesson=${l.id}">${esc(t("au.openAula"))}</a><button class="btn btn-ghost btn-sm" data-action="lesson-done">${esc(t("l.done"))}</button><button class="btn btn-danger btn-sm" data-action="lesson-cancel">${esc(t("l.cancel"))}</button></div>` : ""}
+        ${l.status === "scheduled" ? `<div class="item-actions"><a class="btn btn-sm" href="aula.html?lesson=${l.id}">${esc(t("au.openAula"))}</a><button class="btn btn-ghost btn-sm" data-action="lesson-done">${esc(t("l.done"))}</button><button class="btn btn-danger btn-sm" data-action="lesson-cancel">${esc(t("l.cancel"))}</button></div>` : `<div class="item-actions"><button class="btn btn-danger btn-sm" data-action="lesson-delete">${esc(t("t.delete"))}</button></div>`}
       </article>`;
     const d = new Date(Date.now() + 86400000); d.setMinutes(0, 0, 0); d.setHours(17);
     const pad = (n) => String(n).padStart(2, "0");
@@ -459,6 +459,10 @@
         if (el.dataset.confirm !== "1") { el.dataset.confirm = "1"; el.textContent = t("confirm"); return; }
         await q(sb.from("teacher_students").delete().eq("teacher_id", me.id).eq("student_id", el.dataset.id));
         S.selected = null; S.detail = null; await loadTeacherBase(); render();
+      } else if (a === "lesson-delete") {
+        if (el.dataset.confirm !== "1") { el.dataset.confirm = "1"; el.textContent = t("confirm"); return; }
+        await q(sb.from("lessons").delete().eq("id", el.closest("[data-lesson]").dataset.lesson));
+        await loadLessons(); render();
       } else if (a === "lesson-done" || a === "lesson-cancel") {
         const id = el.closest("[data-lesson]").dataset.lesson;
         if (a === "lesson-cancel" && el.dataset.confirm !== "1") { el.dataset.confirm = "1"; el.textContent = t("confirm"); return; }

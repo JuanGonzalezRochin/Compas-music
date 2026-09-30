@@ -73,6 +73,11 @@ Students can enter from 15 minutes before the lesson until 30 minutes after it e
 1. https://web3forms.com → free account with gonz.roch@gmail.com → copy the Access Key.
 2. In `index.html` set `web3formsKey: "your-key"` and upload again.
 
+## Video on the landing page
+Put an MP4 at `videos/estudiantes.mp4` (horizontal, 10–20 s, no audio needed, under ~8 MB). It plays muted and looped under the hero, with a pause button.
+Until the file exists, the page shows the guitar image with a small "Espacio para video" label.
+Free footage with commercial use and no attribution: Pexels, Pixabay, Mixkit, Coverr (always check the clip's license page).
+
 ## Images
 Replace `images/guitar.webp` / `images/piano.webp` with your own photos (same names), landscape, ≥1600 px wide, <300 KB.
 

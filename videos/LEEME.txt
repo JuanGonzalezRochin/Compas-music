@@ -1,0 +1,5 @@
+Pon aquí tu video con el nombre: estudiantes.mp4
+- Formato MP4 (H.264), horizontal, 1920x1080 o 1280x720
+- 10 a 20 segundos, sin audio (se reproduce en silencio y en bucle)
+- Idealmente menos de 8 MB (comprime gratis en https://www.freeconvert.com/video-compressor o con HandBrake)
+Mientras no exista el archivo, la página muestra la imagen de fondo con la etiqueta "Espacio para video".

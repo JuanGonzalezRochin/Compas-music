@@ -158,6 +158,18 @@ header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
 
 @media (max-width: 880px) { .hero-grid { grid-template-columns: 1fr; } }
 
+/* Video band */
+.video-band { padding-block: 0 clamp(40px, 6vw, 72px); }
+.video-frame { position: relative; aspect-ratio: 16 / 7; max-width: 100%; border-radius: 22px; overflow: hidden; background: #0F1F3A url("images/guitar.webp") center/cover no-repeat; box-shadow: var(--shadow); }
+.video-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.video-frame::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15,31,58,.75) 0%, rgba(15,31,58,.15) 60%); pointer-events: none; }
+.video-caption { position: absolute; left: clamp(20px, 4vw, 44px); bottom: clamp(20px, 4vw, 40px); z-index: 1; color: #fff; display: grid; gap: 8px; max-width: 30ch; }
+.video-caption b { font: 800 clamp(1.4rem, 3vw, 2.2rem)/1.1 var(--f-display); letter-spacing: -0.02em; text-wrap: balance; }
+.video-caption span { color: #C9D6EA; font-size: .95rem; }
+.video-toggle { position: absolute; right: 16px; bottom: 16px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.9); color: #0F1F3A; cursor: pointer; display: grid; place-items: center; }
+.video-placeholder { position: absolute; top: 16px; right: 16px; z-index: 2; font: 600 .72rem var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: #fff; background: rgba(15,31,58,.7); border: 1px dashed rgba(255,255,255,.5); padding: 8px 12px; border-radius: 999px; }
+@media (max-width: 640px) { .video-frame { aspect-ratio: 4 / 5; } }
+
 /* Steps */
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: step; }
 .step { display: grid; gap: 10px; padding-top: 18px; border-top: 2px solid var(--ink); min-width: 0; }
@@ -357,6 +369,25 @@ footer { border-top: 1px solid var(--line); padding-block: 32px; color: var(--in
           <div class="keyboard-label"><span data-i18n="studio.try">Toca el teclado (o usa A S D F G H J)</span><span class="now" id="noteNow" aria-live="polite">—</span></div>
           <div class="keyboard" id="keyboard" role="group" aria-label="Teclado de piano"></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIDEO: put your clip at videos/estudiantes.mp4 (see README) -->
+  <section class="video-band" aria-label="Video">
+    <div class="wrap">
+      <div class="video-frame" id="videoFrame">
+        <video id="heroVideo" muted loop playsinline preload="metadata" poster="images/guitar.webp" aria-hidden="true">
+          <source src="videos/estudiantes.mp4" type="video/mp4">
+        </video>
+        <div class="video-caption">
+          <b data-i18n="video.title">Aprende desde tu casa, a tu ritmo.</b>
+          <span data-i18n="video.sub">Clases en vivo con maestros reales, cada semana.</span>
+        </div>
+        <span class="video-placeholder" id="videoPlaceholder" hidden data-i18n="video.ph">Espacio para video</span>
+        <button class="video-toggle" id="videoToggle" type="button" aria-label="Pausar video" hidden>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>
+        </button>
       </div>
     </div>
   </section>
@@ -635,7 +666,7 @@ const PLANS = [
 /* ============ TRANSLATIONS ============ */
 const T = {
   es: {
-    "nav.instruments":"Instrumentos","nav.plans":"Planes","nav.classroom":"Aula virtual","nav.faq":"Preguntas","nav.cta":"Clase gratis","nav.login":"Entrar",
+    "nav.instruments":"Instrumentos","nav.plans":"Planes","nav.classroom":"Aula virtual","nav.faq":"Preguntas","nav.cta":"Clase gratis","video.title":"Aprende desde tu casa, a tu ritmo.","video.sub":"Clases en vivo con maestros reales, cada semana.","video.ph":"Espacio para video","nav.login":"Entrar",
     "hero.eyebrow":"Clases en vivo · Guitarra y piano",
     "hero.title":"Aprende a tocar con un maestro real, <em>desde tu casa.</em>",
     "hero.lede":"Clases por videollamada con sonido pensado para instrumentos. Tu primera clase es gratis y después pagas una mensualidad fija desde <b class=\"from-price\"></b>.",
@@ -684,7 +715,7 @@ const T = {
     "cta.title":"Tu primera clase va por nuestra cuenta.","cta.sub":"30 minutos 1 a 1, sin tarjeta.","img.guitar":"Diapasón de guitarra","img.piano":"Teclas de piano","foot.made":"Clases de música en vivo · Español e inglés",
   },
   en: {
-    "nav.instruments":"Instruments","nav.plans":"Plans","nav.classroom":"Classroom","nav.faq":"FAQ","nav.cta":"Free lesson","nav.login":"Log in",
+    "nav.instruments":"Instruments","nav.plans":"Plans","nav.classroom":"Classroom","nav.faq":"FAQ","nav.cta":"Free lesson","video.title":"Learn from home, at your own pace.","video.sub":"Live lessons with real teachers, every week.","video.ph":"Video goes here","nav.login":"Log in",
     "hero.eyebrow":"Live lessons · Guitar & piano",
     "hero.title":"Learn to play with a real teacher, <em>from home.</em>",
     "hero.lede":"Video lessons with audio tuned for instruments. Your first lesson is free, then a fixed monthly plan from <b class=\"from-price\"></b>.",
@@ -1037,6 +1068,28 @@ document.getElementById("bpmUp").addEventListener("click", () => setBpm(metro.bp
     html += `<rect x="${x}" y="${140 - a}" width="4" height="${a}" rx="2"/>`;
   }
   g.innerHTML = html;
+})();
+
+/* ============ VIDEO ============ */
+(function setupVideo() {
+  const v = document.getElementById("heroVideo"), btn = document.getElementById("videoToggle"), ph = document.getElementById("videoPlaceholder");
+  if (!v) return;
+  const src = v.querySelector("source");
+  const noVideo = () => { v.hidden = true; ph.hidden = false; btn.hidden = true; };
+  src.addEventListener("error", noVideo);
+  v.addEventListener("error", noVideo);
+  if (v.networkState === 3 /* NETWORK_NO_SOURCE */ || v.error) noVideo();
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  v.addEventListener("loadeddata", () => {
+    btn.hidden = false;
+    if (!reduce) v.play().catch(() => {});
+    setIcon();
+  });
+  const PAUSE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>';
+  const PLAY = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
+  function setIcon() { btn.innerHTML = v.paused ? PLAY : PAUSE; btn.setAttribute("aria-label", v.paused ? "Reproducir video" : "Pausar video"); }
+  btn.addEventListener("click", () => { v.paused ? v.play() : v.pause(); });
+  v.addEventListener("play", setIcon); v.addEventListener("pause", setIcon);
 })();
 
 /* ============ INIT ============ */

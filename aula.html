@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="app.css?v=5">
+<link rel="stylesheet" href="app.css?v=7">
 <style>
   html, body { height: 100%; }
   body { display: flex; flex-direction: column; }
@@ -136,8 +136,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@daily-co/daily-js@0.92.2/dist/daily.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
-<script src="config.js?v=5"></script>
-<script src="common.js?v=5"></script>
+<script src="config.js?v=7"></script>
+<script src="common.js?v=7"></script>
 <script>
 (function () {
   const K = window.Compas;
@@ -184,7 +184,13 @@
 
   /* ---------- Video (Daily Prebuilt, music audio mode) ---------- */
   async function readFnError(error) {
-    try { const body = await error.context.json(); return body; } catch (e) { return { error: "server" }; }
+    const ctx = error && error.context;
+    if (ctx && typeof ctx.status === "number") {
+      let body = {};
+      try { body = await ctx.clone().json(); } catch (e) { try { body = { message: await ctx.text() }; } catch (e2) {} }
+      return { status: ctx.status, ...body };
+    }
+    return { status: 0, error: "fetch", message: (error && error.message) || "" };
   }
   $("joinBtn").addEventListener("click", async () => {
     const btn = $("joinBtn"); btn.disabled = true; btn.textContent = t("au.joining"); $("joinErr").hidden = true;
@@ -193,7 +199,13 @@
       if (error) {
         const body = await readFnError(error);
         const key = "au.err." + (body.error || "server");
-        let msg = t(key) === key ? t("au.err.server") : t(key);
+        const known = body.error && t(key) !== key;
+        let msg = known ? t(key) : t("au.err.server");
+        if (!known) {
+          const detail = body.detail ? (body.detail.info || body.detail.error || JSON.stringify(body.detail)) : (body.message || body.msg || "");
+          msg += ` [${body.status || "?"} ${body.error || ""}${detail ? ": " + String(detail).slice(0, 160) : ""}]`;
+        }
+        console.error("daily-room error", body);
         if (body.opens_at) msg = msg.replace("{t}", new Date(body.opens_at).toLocaleTimeString(K.loc(), { hour: "numeric", minute: "2-digit" }));
         throw new Error(msg);
       }
