@@ -125,3 +125,18 @@ table.data th, table.data td { text-align: left; padding: 10px 8px; border-botto
 table.data th { font: 600 .72rem var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
 .table-wrap { overflow-x: auto; }
 .loading { padding: 60px 0; text-align: center; color: var(--ink-soft); }
+
+/* Calendar picker (schedule a lesson) */
+.cal { border: 1.5px solid var(--line); border-radius: 12px; padding: 10px; background: var(--bg); display: grid; gap: 6px; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 4px; }
+.cal-head b { font-size: .95rem; }
+.cal-nav { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font: 700 1.1rem var(--f-body); }
+.cal-nav:disabled { opacity: .35; cursor: default; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-wk span { text-align: center; font: 600 .7rem var(--f-mono); color: var(--ink-soft); text-transform: uppercase; padding: 2px 0; }
+.cal-day { aspect-ratio: 1; min-width: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: 600 .88rem var(--f-body); cursor: pointer; font-variant-numeric: tabular-nums; }
+.cal-day:hover:not(:disabled) { background: var(--accent-soft); }
+.cal-day.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-day.sel { background: var(--accent); color: var(--accent-ink); }
+.cal-day:disabled { color: var(--ink-soft); opacity: .35; cursor: default; }
+.when-summary { font-weight: 600; font-size: .9rem; color: var(--accent); }
