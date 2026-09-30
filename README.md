@@ -8,8 +8,8 @@ Static site for GitHub Pages + Supabase (accounts, homework) + Web3Forms (trial-
 | `index.html` | Landing page (plans, free-lesson booking) |
 | `entrar.html` | Log in / create account / reset password |
 | `partitura.html` | Shared score viewer (PDF.js): the teacher presents a PDF live, students follow page turns, pen marks and pointer |
-| `aula.html` | Virtual classroom: Daily video (music audio mode) + shared score + shared metronome + tuner |
-| `supabase/functions/daily-room/index.ts` | Server function that opens a private video room per lesson (uses the secret Daily key) |
+| `aula.html` | Virtual classroom: free direct video (music audio) + shared score + shared metronome + tuner |
+| `supabase/functions/daily-room/index.ts` | Only for the optional Daily.co backup video |
 | `app.html` | Dashboard: students see lessons, homework, practice; teachers manage students, lessons, scores |
 | `config.js` | Public settings (Supabase URL + publishable key). Never put secret keys here. |
 | `common.js`, `app.css` | Shared code and styles |
@@ -53,12 +53,16 @@ Note: Supabase's built-in email sender only sends a few emails per hour, which i
 
 If the room stays on "Conectando…": Supabase → **Project Settings → Realtime** → make sure public channel access is allowed.
 
-## Turn on the video classroom (about 10 minutes)
-1. **New Daily key.** Daily dashboard → Developers → rotate/create a new API key (the old one was shared in chat). Copy it.
-2. **Save it as a secret in Supabase.** Supabase → Edge Functions → **Secrets** → Add new secret: name `DAILY_API_KEY`, value = your Daily key → Save.
-3. **Create the server function.** Supabase → Edge Functions → **Deploy a new function → Via Editor**. Name it exactly `daily-room`, delete the sample code, paste all of `supabase/functions/daily-room/index.ts`, click **Deploy**.
-4. **Turn off "Verify JWT"** for `daily-room` (function → Details/Settings). The function checks the login itself.
-5. Upload the site files to GitHub again.
+## Video classroom
+The classroom uses **direct video between browsers** (WebRTC peer-to-peer): 100% free, no card, no extra account.
+Supabase Realtime (already set up) only introduces the browsers to each other; video and audio then travel directly between them.
+- Music audio: stereo Opus at 256 kbps, no noise suppression / echo cancellation / auto-gain.
+- **Modo voz** button: turns echo cancellation on for someone without headphones (instrument sounds less natural).
+- Buttons: mic, camera, screen share, device picker (mic/camera, e.g. an audio interface), leave.
+- Best for private lessons and small groups (up to 4–5 people).
+- About 1 in 10 people on very strict networks (company/school/some mobile data) may not connect. They can switch to home Wi-Fi, or you can add a relay (TURN) server later in `config.js` → `turnServers`.
+
+**Backup: Daily.co.** Set `videoMode: "daily"` in `config.js` to switch. That needs the `daily-room` function (`supabase/functions/daily-room/index.ts`, secret `DAILY_API_KEY`, "Verify JWT" off) and a card on your Daily account.
 
 ### Test a class
 1. As teacher/admin: dashboard → **Clases** → schedule a lesson starting now with your test student.

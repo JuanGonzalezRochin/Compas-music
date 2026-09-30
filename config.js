@@ -5,6 +5,11 @@ window.COMPAS_CONFIG = {
   siteUrl: "https://juangonzalezrochin.github.io/Compas-music/",
   supabaseUrl: "https://lasqkhtyfcjswvajnqzd.supabase.co",
   supabaseKey: "sb_publishable_qrkLsJHtqn7kqJFIXMNF3Q_viCvWzx0",
+  // Classroom video: "p2p" = free direct video between browsers (no account needed)
+  //                  "daily" = Daily.co (needs the daily-room function + a card on your Daily account)
+  videoMode: "p2p",
+  // Optional relay servers for students on very strict networks. Leave empty unless you set one up.
+  turnServers: [],
   instruments: [
     { id: "guitar", es: "Guitarra", en: "Guitar" },
     { id: "piano", es: "Piano y teclado", en: "Piano & keyboard" },

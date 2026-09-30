@@ -75,7 +75,11 @@
       "au.err.not_open": "El aula abre 15 minutos antes de la clase ({t}).", "au.err.no_access": "No tienes acceso a esta clase.",
       "au.err.cancelled": "Esta clase fue cancelada.", "au.err.missing_daily_key": "Falta configurar la clave de Daily en Supabase (DAILY_API_KEY).",
       "au.err.server": "El servidor del aula no respondió. Revisa que la función daily-room esté publicada en Supabase.", "au.err.noLesson": "Falta el enlace de la clase. Entra desde tu panel.",
-      "au.openAula": "Abrir aula", "au.opensNote": "El aula abre 15 min antes.", "au.back": "Volver al panel",
+      "au.openAula": "Abrir aula", "au.screen": "Compartir pantalla", "au.voice": "Modo voz", "au.leave": "Salir", "au.micSel": "Micrófono", "au.camSel": "Cámara",
+      "au.voiceHint": "Modo voz: actívalo solo si no usas audífonos. Reduce el eco, pero el instrumento suena menos natural.",
+      "au.voiceOn": "Modo voz activado: menos eco, sonido menos natural.", "au.voiceOff": "Sonido original activado.",
+      "au.waiting": "Esperando a que entren los demás…", "au.failed": "No se pudo conectar con {n}. Prueben con otra red, por ejemplo el Wi-Fi de casa.",
+      "au.tapSound": "Toca para activar el sonido", "au.noCam": "No pudimos usar tu cámara o micrófono. Revisa los permisos del navegador.", "au.opensNote": "El aula abre 15 min antes.", "au.back": "Volver al panel",
     },
     en: {
       "nav.home": "Home", "nav.logout": "Log out",
@@ -140,7 +144,11 @@
       "au.err.not_open": "The classroom opens 15 minutes before the lesson ({t}).", "au.err.no_access": "You don't have access to this lesson.",
       "au.err.cancelled": "This lesson was cancelled.", "au.err.missing_daily_key": "The Daily key isn't set up in Supabase yet (DAILY_API_KEY).",
       "au.err.server": "The classroom server didn't respond. Check that the daily-room function is deployed in Supabase.", "au.err.noLesson": "The lesson link is missing. Join from your dashboard.",
-      "au.openAula": "Open classroom", "au.opensNote": "Opens 15 min before.", "au.back": "Back to dashboard",
+      "au.openAula": "Open classroom", "au.screen": "Share screen", "au.voice": "Voice mode", "au.leave": "Leave", "au.micSel": "Microphone", "au.camSel": "Camera",
+      "au.voiceHint": "Voice mode: turn it on only if you're not using headphones. It reduces echo, but the instrument sounds less natural.",
+      "au.voiceOn": "Voice mode on: less echo, less natural sound.", "au.voiceOff": "Original sound on.",
+      "au.waiting": "Waiting for others to join…", "au.failed": "Couldn't connect with {n}. Try another network, like your home Wi-Fi.",
+      "au.tapSound": "Tap to turn on sound", "au.noCam": "We couldn't use your camera or microphone. Check your browser permissions.", "au.opensNote": "Opens 15 min before.", "au.back": "Back to dashboard",
     },
   };
 
