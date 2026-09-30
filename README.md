@@ -10,6 +10,7 @@ Static site for GitHub Pages + Supabase (accounts, homework) + Web3Forms (trial-
 | `partitura.html` | Shared score viewer (PDF.js): the teacher presents a PDF live, students follow page turns, pen marks and pointer |
 | `aula.html` | Virtual classroom: free direct video (music audio) + shared score + shared metronome + tuner |
 | `supabase/functions/daily-room/index.ts` | Only for the optional Daily.co backup video |
+| `maestros.html` | Teacher recruitment page (hidden from search engines; linked as "¿Eres maestro?" in the header and footer): offer, earnings calculator, application form |
 | `app.html` | Dashboard: students see lessons, homework, practice; teachers manage students, lessons, scores |
 | `config.js` | Public settings (Supabase URL + publishable key). Never put secret keys here. |
 | `common.js`, `app.css` | Shared code and styles |
@@ -76,6 +77,11 @@ Students can enter from 15 minutes before the lesson until 30 minutes after it e
 ## Booking emails (Web3Forms, free: 250/month)
 1. https://web3forms.com → free account with gonz.roch@gmail.com → copy the Access Key.
 2. In `index.html` set `web3formsKey: "your-key"` and upload again.
+
+## Teacher page (maestros.html)
+- Applications arrive by email through Web3Forms: paste the same key into `CONFIG.web3formsKey` at the top of the script in `maestros.html`.
+- Commission split and prices used by the calculator: `CONFIG.split` (70% platform students / 90% own students / 80% founders for 6 months) and `CONFIG.prices`.
+- To onboard an approved teacher: they create an account in `entrar.html`, then you change their role to **Maestro** in the dashboard → **Usuarios**.
 
 ## Video on the landing page
 Put an MP4 at `videos/estudiantes.mp4` (horizontal, 10–20 s, no audio needed, under ~8 MB). It plays muted and looped under the hero, with a pause button.

@@ -99,6 +99,7 @@ header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
 .nav-links { display: flex; gap: 22px; margin-left: auto; }
 .nav-links a { text-decoration: none; color: var(--ink-soft); font-weight: 500; font-size: .95rem; }
 .nav-links a:hover { color: var(--ink); }
+.nav-links a.nav-teach { color: var(--teal); font-weight: 600; }
 .nav-actions { display: flex; align-items: center; gap: 10px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--surface); }
 .seg button { font: 600 .78rem/1 var(--f-mono); letter-spacing: .04em; padding: 7px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-soft); cursor: pointer; }
@@ -340,6 +341,7 @@ footer { border-top: 1px solid var(--line); padding-block: 32px; color: var(--in
       <a href="#planes" data-i18n="nav.plans">Planes</a>
       <a href="#aula" data-i18n="nav.classroom">Aula virtual</a>
       <a href="#faq" data-i18n="nav.faq">Preguntas</a>
+      <a href="maestros.html" class="nav-teach" data-i18n="nav.teach">¿Eres maestro?</a>
     </nav>
     <div class="nav-actions">
       <div class="seg" role="group" aria-label="Idioma / Language">
@@ -658,7 +660,7 @@ footer { border-top: 1px solid var(--line); padding-block: 32px; color: var(--in
 <footer>
   <div class="wrap foot">
     <span>© <span id="year">2026</span> <span class="brand-name">Compás</span> Music Academy</span>
-    <span data-i18n="foot.made">Clases de música en vivo · Español e inglés</span>
+    <span><span data-i18n="foot.made">Clases de música en vivo · Español e inglés</span> · <a href="maestros.html" data-i18n="nav.teachFoot">Soy maestro y quiero dar clases</a></span>
   </div>
 </footer>
 
@@ -698,7 +700,7 @@ const PLANS = [
 /* ============ TRANSLATIONS ============ */
 const T = {
   es: {
-    "nav.instruments":"Instrumentos","nav.plans":"Planes","nav.classroom":"Aula virtual","nav.faq":"Preguntas","nav.cta":"Clase gratis","video.title":"Aprende desde tu casa, a tu ritmo.","video.sub":"Clases en vivo con maestros reales, cada semana.","video.ph":"Espacio para video","nav.login":"Entrar",
+    "nav.instruments":"Instrumentos","nav.plans":"Planes","nav.classroom":"Aula virtual","nav.faq":"Preguntas","nav.teach":"¿Eres maestro?","nav.teachFoot":"Soy maestro y quiero dar clases","nav.cta":"Clase gratis","video.title":"Aprende desde tu casa, a tu ritmo.","video.sub":"Clases en vivo con maestros reales, cada semana.","video.ph":"Espacio para video","nav.login":"Entrar",
     "hero.eyebrow":"Clases en vivo · Guitarra y piano",
     "hero.title":"Aprende a tocar con un maestro real, <em>desde tu casa.</em>",
     "hero.lede":"Clases por videollamada con sonido pensado para instrumentos. Tu primera clase es gratis y después pagas una mensualidad fija desde <b class=\"from-price\"></b>.",
@@ -747,7 +749,7 @@ const T = {
     "cta.title":"Tu primera clase va por nuestra cuenta.","cta.sub":"30 minutos 1 a 1, sin tarjeta.","img.guitar":"Diapasón de guitarra","img.piano":"Teclas de piano","foot.made":"Clases de música en vivo · Español e inglés",
   },
   en: {
-    "nav.instruments":"Instruments","nav.plans":"Plans","nav.classroom":"Classroom","nav.faq":"FAQ","nav.cta":"Free lesson","video.title":"Learn from home, at your own pace.","video.sub":"Live lessons with real teachers, every week.","video.ph":"Video goes here","nav.login":"Log in",
+    "nav.instruments":"Instruments","nav.plans":"Plans","nav.classroom":"Classroom","nav.faq":"FAQ","nav.teach":"Teach with us","nav.teachFoot":"I'm a teacher and want to teach","nav.cta":"Free lesson","video.title":"Learn from home, at your own pace.","video.sub":"Live lessons with real teachers, every week.","video.ph":"Video goes here","nav.login":"Log in",
     "hero.eyebrow":"Live lessons · Guitar & piano",
     "hero.title":"Learn to play with a real teacher, <em>from home.</em>",
     "hero.lede":"Video lessons with audio tuned for instruments. Your first lesson is free, then a fixed monthly plan from <b class=\"from-price\"></b>.",
