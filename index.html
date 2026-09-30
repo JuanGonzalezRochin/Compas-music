@@ -160,15 +160,15 @@ header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
 
 /* Video band */
 .video-band { padding-block: 0 clamp(40px, 6vw, 72px); }
-.video-frame { position: relative; aspect-ratio: 16 / 7; max-width: 100%; border-radius: 22px; overflow: hidden; background: #0F1F3A url("images/guitar.webp") center/cover no-repeat; box-shadow: var(--shadow); }
-.video-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.video-frame { position: relative; aspect-ratio: 2 / 1; max-width: 100%; border-radius: 22px; overflow: hidden; background: #0F1F3A url("images/guitar.webp") center/cover no-repeat; box-shadow: var(--shadow); }
+.video-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 40%; }
 .video-frame::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15,31,58,.75) 0%, rgba(15,31,58,.15) 60%); pointer-events: none; }
 .video-caption { position: absolute; left: clamp(20px, 4vw, 44px); bottom: clamp(20px, 4vw, 40px); z-index: 1; color: #fff; display: grid; gap: 8px; max-width: 30ch; }
 .video-caption b { font: 800 clamp(1.4rem, 3vw, 2.2rem)/1.1 var(--f-display); letter-spacing: -0.02em; text-wrap: balance; }
 .video-caption span { color: #C9D6EA; font-size: .95rem; }
 .video-toggle { position: absolute; right: 16px; bottom: 16px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.9); color: #0F1F3A; cursor: pointer; display: grid; place-items: center; }
 .video-placeholder { position: absolute; top: 16px; right: 16px; z-index: 2; font: 600 .72rem var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: #fff; background: rgba(15,31,58,.7); border: 1px dashed rgba(255,255,255,.5); padding: 8px 12px; border-radius: 999px; }
-@media (max-width: 640px) { .video-frame { aspect-ratio: 4 / 5; } }
+@media (max-width: 640px) { .video-frame { aspect-ratio: 4 / 3; } .video-caption b { font-size: 1.25rem; } .video-caption span { display: none; } }
 
 /* Steps */
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: step; }
@@ -377,7 +377,8 @@ footer { border-top: 1px solid var(--line); padding-block: 32px; color: var(--in
   <section class="video-band" aria-label="Video">
     <div class="wrap">
       <div class="video-frame" id="videoFrame">
-        <video id="heroVideo" muted loop playsinline preload="metadata" poster="images/guitar.webp" aria-hidden="true">
+        <video id="heroVideo" muted loop playsinline preload="auto" poster="videos/estudiantes-poster.webp" aria-hidden="true">
+          <source src="videos/estudiantes.webm" type="video/webm">
           <source src="videos/estudiantes.mp4" type="video/mp4">
         </video>
         <div class="video-caption">
@@ -1074,22 +1075,26 @@ document.getElementById("bpmUp").addEventListener("click", () => setBpm(metro.bp
 (function setupVideo() {
   const v = document.getElementById("heroVideo"), btn = document.getElementById("videoToggle"), ph = document.getElementById("videoPlaceholder");
   if (!v) return;
-  const src = v.querySelector("source");
+  const src = v.querySelector("source:last-of-type");
   const noVideo = () => { v.hidden = true; ph.hidden = false; btn.hidden = true; };
   src.addEventListener("error", noVideo);
   v.addEventListener("error", noVideo);
   if (v.networkState === 3 /* NETWORK_NO_SOURCE */ || v.error) noVideo();
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  v.addEventListener("loadeddata", () => {
+  let ready = false;
+  const onReady = () => {
+    if (ready) return; ready = true;
     btn.hidden = false;
     if (!reduce) v.play().catch(() => {});
     setIcon();
-  });
+  };
+  v.addEventListener("loadeddata", onReady);
   const PAUSE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>';
   const PLAY = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
   function setIcon() { btn.innerHTML = v.paused ? PLAY : PAUSE; btn.setAttribute("aria-label", v.paused ? "Reproducir video" : "Pausar video"); }
   btn.addEventListener("click", () => { v.paused ? v.play() : v.pause(); });
   v.addEventListener("play", setIcon); v.addEventListener("pause", setIcon);
+  if (v.readyState >= 2) onReady();
 })();
 
 /* ============ INIT ============ */

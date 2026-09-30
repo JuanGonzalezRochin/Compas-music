@@ -1,5 +1,6 @@
-Pon aquí tu video con el nombre: estudiantes.mp4
-- Formato MP4 (H.264), horizontal, 1920x1080 o 1280x720
-- 10 a 20 segundos, sin audio (se reproduce en silencio y en bucle)
-- Idealmente menos de 8 MB (comprime gratis en https://www.freeconvert.com/video-compressor o con HandBrake)
-Mientras no exista el archivo, la página muestra la imagen de fondo con la etiqueta "Espacio para video".
+Video de la página principal (17 s, en bucle, sin audio):
+- estudiantes.webm  (se usa primero en Chrome/Firefox/Edge)
+- estudiantes.mp4   (Safari/iPhone y respaldo)
+- estudiantes-poster.webp (imagen mientras carga)
+Para cambiarlo, reemplaza estos archivos con los mismos nombres.
+Clips originales: Pexels (licencia Pexels: uso comercial, sin atribución).
